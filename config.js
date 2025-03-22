@@ -8,14 +8,10 @@ export const config = {
     
     // Game settings
     initialBallSize: 2,
-    ballSpeed: 500, 
-    humanCount: 15, 
+    ballSpeed: 150,
+    humanCount: 20,
     minHumanSize: 0.5,
     maxHumanSize: 2,
-    
-    // Performance settings
-    renderDistance: 2, 
-    maxPhysicsObjects: 50,
     
     // Predefined captions from the user input with word timings
     predefinedCaptions: [

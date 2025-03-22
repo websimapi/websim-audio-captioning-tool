@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
 
 // Physics variables
 export let world;
@@ -6,9 +7,9 @@ export const timeStep = 1/60;
 
 // Initialize physics world
 export function initPhysics() {
-    // world = new CANNON.World({
-    //     gravity: new CANNON.Vec3(0, -9.82, 0)
-    // });
+    world = new CANNON.World({
+        gravity: new CANNON.Vec3(0, -9.82, 0)
+    });
 }
 
 export function createGround(scene, world) {
@@ -25,14 +26,14 @@ export function createGround(scene, world) {
     scene.add(ground);
     
     // CANNON.js ground
-    // const groundBody = new CANNON.Body({
-    //     type: CANNON.Body.STATIC,
-    //     shape: new CANNON.Plane()
-    // });
-    // groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-    // world.addBody(groundBody);
+    const groundBody = new CANNON.Body({
+        type: CANNON.Body.STATIC,
+        shape: new CANNON.Plane()
+    });
+    groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+    world.addBody(groundBody);
     
-    return { ground };
+    return { ground, groundBody };
 }
 
 export function createBall(scene, world, ballRadius, ballMass) {
@@ -50,16 +51,16 @@ export function createBall(scene, world, ballRadius, ballMass) {
     scene.add(ball);
     
     // CANNON.js ball
-    // const ballBody = new CANNON.Body({
-    //     mass: ballMass,
-    //     shape: new CANNON.Sphere(ballRadius),
-    //     position: new CANNON.Vec3(0, ballRadius, 0),
-    //     linearDamping: 0.4,
-    //     angularDamping: 0.4
-    // });
-    // world.addBody(ballBody);
+    const ballBody = new CANNON.Body({
+        mass: ballMass,
+        shape: new CANNON.Sphere(ballRadius),
+        position: new CANNON.Vec3(0, ballRadius, 0),
+        linearDamping: 0.4,
+        angularDamping: 0.4
+    });
+    world.addBody(ballBody);
     
-    return { ball };
+    return { ball, ballBody };
 }
 
 export function createHumans(scene, world, humans, humanBodies) {
@@ -89,46 +90,41 @@ export function createHumans(scene, world, humans, humanBodies) {
         scene.add(human);
         
         // Create physics body
-        // const humanBody = new CANNON.Body({
-        //     mass: size * 2,
-        //     shape: new CANNON.Box(new CANNON.Vec3(size * 0.25, size * 0.9, size * 0.25)),
-        //     position: new CANNON.Vec3(x, size * 0.9, z)
-        // });
-        // world.addBody(humanBody);
+        const humanBody = new CANNON.Body({
+            mass: size * 2,
+            shape: new CANNON.Box(new CANNON.Vec3(size * 0.25, size * 0.9, size * 0.25)),
+            position: new CANNON.Vec3(x, size * 0.9, z)
+        });
+        world.addBody(humanBody);
         
         humans.push({
             mesh: human,
-            // body: humanBody,
+            body: humanBody,
             size: size,
             attached: false
         });
-        // humanBodies.push(humanBody);
+        humanBodies.push(humanBody);
     }
 }
 
-export function updateBallMovement(ball, keys) {
-    // const force = 800;
+export function updateBallMovement(ballBody, keys) {
+    const force = 600;
     
-    // if (keys['w']) {
-    //     ballBody.applyLocalForce(new CANNON.Vec3(0, 0, -force));
-    // }
-    // if (keys['s']) {
-    //     ballBody.applyLocalForce(new CANNON.Vec3(0, 0, force));
-    // }
-    // if (keys['a']) {
-    //     ballBody.applyLocalForce(new CANNON.Vec3(-force, 0, 0));
-    // }
-    // if (keys['d']) {
-    //     ballBody.applyLocalForce(new CANNON.Vec3(force, 0, 0));
-    // }
-    
-    // Add a small upward force to prevent getting stuck
-    // if (ballBody.position.y < 1.5) {
-    //     ballBody.applyLocalForce(new CANNON.Vec3(0, 50, 0));
-    // }
+    if (keys['w']) {
+        ballBody.applyLocalForce(new CANNON.Vec3(0, 0, -force));
+    }
+    if (keys['s']) {
+        ballBody.applyLocalForce(new CANNON.Vec3(0, 0, force));
+    }
+    if (keys['a']) {
+        ballBody.applyLocalForce(new CANNON.Vec3(-force, 0, 0));
+    }
+    if (keys['d']) {
+        ballBody.applyLocalForce(new CANNON.Vec3(force, 0, 0));
+    }
 }
 
-export function checkCollisions(ball, humans, ballRadius, scene, attachedObjects) {
+export function checkCollisions(ball, humans, ballRadius, scene, attachedObjects, ballBody, world, ballMass, score) {
     humans.forEach(human => {
         if (!human.attached) {
             // Calculate distance between ball and human
@@ -138,16 +134,16 @@ export function checkCollisions(ball, humans, ballRadius, scene, attachedObjects
             const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
             
             // If the human is smaller than the ball and close enough, attach it
-            // if (distance < ballRadius + human.size * 0.5 && human.size < ballRadius) {
-            //     attachHumanToBall(human, ball, ballRadius, scene, attachedObjects);
-            // }
+            if (distance < ballRadius + human.size * 0.5 && human.size < ballRadius) {
+                attachHumanToBall(human, ball, ballRadius, scene, attachedObjects, ballBody, world, ballMass, score);
+            }
         }
     });
 }
 
-export function attachHumanToBall(human, ball, ballRadius, scene, attachedObjects) {
+export function attachHumanToBall(human, ball, ballRadius, scene, attachedObjects, ballBody, world, ballMass, score) {
     human.attached = true;
-    // world.removeBody(human.body);
+    world.removeBody(human.body);
     
     // Calculate a random position on the ball's surface
     const phi = Math.random() * Math.PI * 2;
@@ -157,8 +153,8 @@ export function attachHumanToBall(human, ball, ballRadius, scene, attachedObject
     const z = ballRadius * Math.cos(theta);
     
     // Create a constraint to attach the human to the ball
-    // const pivotA = new CANNON.Vec3(x, y, z);
-    // const pivotB = new CANNON.Vec3(0, 0, 0);
+    const pivotA = new CANNON.Vec3(x, y, z);
+    const pivotB = new CANNON.Vec3(0, 0, 0);
     
     // Visually position the human on the ball's surface
     human.mesh.position.set(
@@ -182,20 +178,26 @@ export function attachHumanToBall(human, ball, ballRadius, scene, attachedObject
     });
     
     // Increase ball size slightly with each attachment
-    // ballRadius += human.size * 0.1;
-    // const newScale = ballRadius / 2;
-    // ball.scale.set(newScale, newScale, newScale);
+    ballRadius += human.size * 0.1;
+    const newScale = ballRadius / 2;
+    ball.scale.set(newScale, newScale, newScale);
     
     // Update ball's physics body
-    // world.removeBody(ballBody);
-    // const newBallBody = new CANNON.Body({
-    //     mass: ballMass += human.size,
-    //     shape: new CANNON.Sphere(ballRadius),
-    //     position: new CANNON.Vec3(ball.position.x, ball.position.y, ball.position.z),
-    //     linearDamping: 0.4,
-    //     angularDamping: 0.4
-    // });
-    // world.addBody(newBallBody);
+    world.removeBody(ballBody);
+    const newBallBody = new CANNON.Body({
+        mass: ballMass += human.size,
+        shape: new CANNON.Sphere(ballRadius),
+        position: new CANNON.Vec3(ball.position.x, ball.position.y, ball.position.z),
+        linearDamping: 0.4,
+        angularDamping: 0.4
+    });
+    world.addBody(newBallBody);
+    
+    // Increase score
+    score += Math.floor(human.size * 10);
+    
+    // Visual effect for attachment
+    createAttachmentEffect(human.mesh.position, scene);
 }
 
 export function createAttachmentEffect(position, scene) {
@@ -253,98 +255,32 @@ export function createInfiniteGround(scene, world, chunkSize = 100, renderDistan
         const materialIndex = Math.abs(x % 2) + Math.abs(z % 2) * 2;
         const material = groundMaterials[materialIndex];
         
-        // Three.js ground with decorative elements
-        const groundGeometry = new THREE.PlaneGeometry(chunkSize, chunkSize, 8, 8);
+        // Three.js ground with flat terrain
+        const groundGeometry = new THREE.PlaneGeometry(chunkSize, chunkSize);
         const ground = new THREE.Mesh(groundGeometry, material);
         ground.rotation.x = -Math.PI / 2;
         ground.position.set(x * chunkSize, 0, z * chunkSize);
         ground.receiveShadow = true;
-        
-        // Add some height variation to make terrain more interesting
-        const positionAttribute = groundGeometry.getAttribute('position');
-        for (let i = 0; i < positionAttribute.count; i++) {
-            // Skip the edges to avoid gaps between chunks
-            const u = positionAttribute.getX(i) / chunkSize + 0.5;
-            const v = positionAttribute.getY(i) / chunkSize + 0.5;
-            if (u > 0.1 && u < 0.9 && v > 0.1 && v < 0.9) {
-                // Create gentle rolling hills
-                const noise = Math.sin(u * 5 + x * 3) * Math.cos(v * 5 + z * 3) * 0.5;
-                positionAttribute.setZ(i, noise);
-            }
-        }
-        
-        groundGeometry.computeVertexNormals();
         scene.add(ground);
         
         // CANNON.js ground (flat for physics simplicity)
-        // const groundBody = new CANNON.Body({
-        //     type: CANNON.Body.STATIC,
-        //     shape: new CANNON.Plane()
-        // });
-        // groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-        // groundBody.position.set(x * chunkSize, -0.5, z * chunkSize); // Lower physics plane to account for terrain height
-        // world.addBody(groundBody);
+        const groundBody = new CANNON.Body({
+            type: CANNON.Body.STATIC,
+            shape: new CANNON.Plane()
+        });
+        groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+        groundBody.position.set(x * chunkSize, 0, z * chunkSize);
+        world.addBody(groundBody);
         
         // Store the chunk
-        groundChunks.set(chunkKey, { ground });
+        groundChunks.set(chunkKey, { ground, groundBody });
         
-        // Add decorative elements to the terrain
-        addTerrainDecorations(scene, x * chunkSize, z * chunkSize, chunkSize);
+        // No decorative elements added to keep terrain simple
     }
     
-    // Function to add decorative elements
+    // Function to add decorative elements - now empty
     function addTerrainDecorations(scene, x, z, chunkSize) {
-        // Add some small decorative elements to the terrain
-        const decorCount = Math.floor(Math.random() * 5) + 3;
-        
-        for (let i = 0; i < decorCount; i++) {
-            // Random position within the chunk
-            const posX = x + Math.random() * chunkSize - chunkSize/2;
-            const posZ = z + Math.random() * chunkSize - chunkSize/2;
-            
-            // Random decoration type
-            const decorType = Math.floor(Math.random() * 3);
-            
-            if (decorType === 0) {
-                // Create a small mound/hill
-                const hillGeometry = new THREE.SphereGeometry(2 + Math.random() * 3, 8, 8, 0, Math.PI * 2, 0, Math.PI / 2);
-                const hillMaterial = new THREE.MeshStandardMaterial({ 
-                    color: 0x9ACD32, 
-                    roughness: 0.8,
-                    metalness: 0.1
-                });
-                const hill = new THREE.Mesh(hillGeometry, hillMaterial);
-                hill.position.set(posX, 0, posZ);
-                scene.add(hill);
-            } else if (decorType === 1) {
-                // Create a simple flower
-                const stemGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 8);
-                const stemMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
-                const stem = new THREE.Mesh(stemGeometry, stemMaterial);
-                stem.position.set(posX, 0.5, posZ);
-                
-                const flowerGeometry = new THREE.SphereGeometry(0.3, 8, 8);
-                const flowerColor = [0xFF69B4, 0xFFFF00, 0xFF6347, 0x9370DB][Math.floor(Math.random() * 4)];
-                const flowerMaterial = new THREE.MeshStandardMaterial({ color: flowerColor });
-                const flower = new THREE.Mesh(flowerGeometry, flowerMaterial);
-                flower.position.set(0, 0.7, 0);
-                stem.add(flower);
-                
-                scene.add(stem);
-            } else {
-                // Create a simple rock
-                const rockGeometry = new THREE.DodecahedronGeometry(0.5 + Math.random() * 0.5);
-                const rockMaterial = new THREE.MeshStandardMaterial({ 
-                    color: 0x808080, 
-                    roughness: 0.9,
-                    metalness: 0.1
-                });
-                const rock = new THREE.Mesh(rockGeometry, rockMaterial);
-                rock.position.set(posX, 0.25, posZ);
-                rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-                scene.add(rock);
-            }
-        }
+        // Removed all decoration spawning
     }
     
     // Function to update chunks based on player position
@@ -369,7 +305,7 @@ export function createInfiniteGround(scene, world, chunkSize = 100, renderDistan
             
             if (distance > renderDistance + 1) {
                 scene.remove(chunk.ground);
-                // world.removeBody(chunk.groundBody);
+                world.removeBody(chunk.groundBody);
                 groundChunks.delete(key);
             }
         }

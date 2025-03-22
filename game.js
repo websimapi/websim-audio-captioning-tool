@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { world, timeStep, initPhysics, createHumans, createInfiniteGround } from './gamePhysics.js';
+import { world, timeStep, initPhysics, createBall, createHumans, createInfiniteGround } from './gamePhysics.js';
 import { loadCharacters } from './gameAssets.js';
 import { config } from './config.js';
 import { updateBallMovement, checkCollisions, attachHumanToBall, createAttachmentEffect } from './gamePhysics.js';
@@ -44,15 +44,11 @@ function initScene() {
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 15, 20);
     
-    // Create renderer with better performance settings
-    renderer = new THREE.WebGLRenderer({ 
-        antialias: true,
-        powerPreference: "high-performance",
-        precision: "mediump"
-    });
+    // Create renderer
+    renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Better quality/performance trade-off
+    document.getElementById('game-container').appendChild(renderer.domElement);
     
     // Initialize physics
     initPhysics();
@@ -165,74 +161,13 @@ function startGame() {
     }
 }
 
-function createBall(scene, world, ballRadius, ballMass) {
-    // Three.js ball with lower polygon count for better performance
-    const ballGeometry = new THREE.SphereGeometry(ballRadius, 16, 16); // Reduced from 32, 32
-    const ballMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0xFF6B6B,
-        roughness: 0.5,
-        metalness: 0.2
-    });
-    const ball = new THREE.Mesh(ballGeometry, ballMaterial);
-    ball.castShadow = true;
-    ball.receiveShadow = true;
-    ball.position.set(0, ballRadius * 2, 0); // Higher starting position to avoid ground collision issues
-    scene.add(ball);
-    
-    // Check if CANNON is defined before trying to use it
-    if (typeof CANNON !== 'undefined') {
-        // CANNON.js ball with better physics properties
-        const ballBody = new CANNON.Body({
-            mass: ballMass,
-            shape: new CANNON.Sphere(ballRadius),
-            position: new CANNON.Vec3(0, ballRadius * 2, 0),
-            linearDamping: 0.2, // Reduced from 0.4 for less friction
-            angularDamping: 0.2  // Reduced from 0.4
-        });
-        
-        // Add velocity cap to prevent excessive speed
-        ballBody.addEventListener('preStep', () => {
-            const maxVelocity = 30;
-            const vel = ballBody.velocity;
-            const speed = vel.length();
-            
-            if (speed > maxVelocity) {
-                vel.scale(maxVelocity / speed, vel);
-            }
-        });
-        
-        world.addBody(ballBody);
-        
-        return { ball, ballBody };
-    }
-    
-    // If CANNON isn't available, just return the ball with a dummy ballBody
-    return { ball, ballBody: { position: ball.position, quaternion: ball.quaternion } };
-}
-
 function update() {
     if (gameStarted) {
-        // Update physics with optimized performance only if CANNON is available
-        if (typeof CANNON !== 'undefined' && world) {
-            for (let i = 0; i < 2; i++) { // Increase physics steps for better accuracy
-                world.step(timeStep / 2);
-            }
-        }
+        // Update physics
+        world.step(timeStep);
         
         // Update player movement
-        if (typeof CANNON !== 'undefined') {
-            updateBallMovement(ballBody, keys);
-        }
-        
-        // Ensure ball stays above ground
-        if (ballBody && ballBody.position) {
-            if (ballBody.position.y < ballRadius) {
-                ballBody.position.y = ballRadius;
-                if (ballBody.velocity) {
-                    ballBody.velocity.y = Math.max(0, ballBody.velocity.y);
-                }
-            }
-        }
+        updateBallMovement(ballBody, keys);
         
         // Handle camera rotation with arrow keys
         if (keys['ArrowLeft']) {
@@ -259,11 +194,6 @@ function update() {
             terrainSystem.updateChunks(ball.position);
         }
         
-        // Check for collisions
-        if (typeof CANNON !== 'undefined') {
-            checkCollisions(ball, humans, ballRadius, scene, attachedObjects, ballBody, world, ballMass, score);
-        }
-        
         // Update attached objects
         updateAttachedObjects(attachedObjects, ball);
         
@@ -279,8 +209,8 @@ function update() {
     
     // Update camera to follow the ball
     if (ball) {
-        const cameraDistance = 50; 
-        const cameraHeight = 35;   
+        const cameraDistance = 70; 
+        const cameraHeight = 40;   
         camera.position.x = ball.position.x + Math.sin(cameraRotation) * cameraDistance;
         camera.position.z = ball.position.z + Math.cos(cameraRotation) * cameraDistance;
         camera.position.y = ball.position.y + cameraHeight; 
@@ -292,9 +222,6 @@ function update() {
     
     // Update animations
     if (dancerMixer) dancerMixer.update(timeStep);
-    
-    // Optimize rendering
-    optimizeSceneRendering();
     
     // Render scene
     renderer.render(scene, camera);
@@ -340,24 +267,6 @@ function updateDancerPosition() {
     }
 }
 
-function optimizeSceneRendering() {
-    scene.traverse(object => {
-        if (object.isMesh) {
-            object.frustumCulled = true;
-            
-            // Lower geometry detail for distant objects
-            if (object !== ball && !attachedObjects.some(ao => ao.mesh === object)) {
-                const distance = object.position.distanceTo(ball.position);
-                if (distance > 50) {
-                    object.visible = false;
-                } else {
-                    object.visible = true;
-                }
-            }
-        }
-    });
-}
-
 // Initialize game
 async function initGame() {
     // Initialize scene
@@ -365,25 +274,19 @@ async function initGame() {
     
     // Create environment with infinite terrain instead of single ground
     terrainSystem = createInfiniteGround(scene, world);
+    const { ball: ballObj, ballBody: ballPhysicsBody } = createBall(scene, world, ballRadius, ballMass);
+    ball = ballObj;
+    ballBody = ballPhysicsBody;
+    
+    // Add loading timeout
+    const loadingTimeout = setTimeout(() => {
+        loadingScreen.innerHTML = 'Loading taking too long. <button id="retryBtn">Retry</button>';
+        document.getElementById('retryBtn').addEventListener('click', () => {
+            window.location.reload();
+        });
+    }, 15000); // 15 seconds timeout
     
     try {
-        const { ball: ballObj, ballBody: ballPhysicsBody } = createBall(scene, world, ballRadius, ballMass);
-        ball = ballObj;
-        ballBody = ballPhysicsBody;
-        
-        // Only create humans if we have physics working
-        if (typeof CANNON !== 'undefined') {
-            createHumans(scene, world, humans, humanBodies);
-        }
-        
-        // Add loading timeout
-        let loadingTimeout = setTimeout(() => {
-            loadingScreen.innerHTML = 'Loading taking too long. <button id="retryBtn">Retry</button>';
-            document.getElementById('retryBtn').addEventListener('click', () => {
-                window.location.reload();
-            });
-        }, 15000); // 15 seconds timeout
-        
         // Load characters
         const { skyboxDancerObj, dancerMixerObj, runningHumanObj, runnerMixerObj } = await loadCharacters(scene);
         

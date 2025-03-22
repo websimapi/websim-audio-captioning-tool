@@ -14,8 +14,8 @@ export function updateRunningHuman(runningHuman, runnerMixer, timeStep, ball) {
     const distance = runningHuman.position.distanceTo(ball.position);
     
     // Speed increases as ball gets closer
-    const baseSpeed = 0.1; // Slow base speed
-    const maxSpeed = 0.8;  // Fast max speed
+    const baseSpeed = 0.05; // Slower base speed
+    const maxSpeed = 1.2;  // Faster max speed
     const minDistance = 5; // Distance at which max speed is reached
     const maxDistance = 30; // Distance at which min speed is used
     
