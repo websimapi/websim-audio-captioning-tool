@@ -23,6 +23,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastWordStartTime = 0;
     let wordTimingMap = new Map();
     let currentWordIndex = -1;
+    let customWordTimings = new Map();
+    let nextWordToHighlight = 0;
+    let currentCaptionId = null;
 
     // Initialize audio processing with improved speech detection
     function initAudioProcessing() {
@@ -152,11 +155,22 @@ document.addEventListener('DOMContentLoaded', () => {
             if (lastRecognizedWords.includes(cleanWord)) {
                 highlightedHTML += `<span class="highlighted-word">${word}</span> `;
             } else {
-                highlightedHTML += `${word} `;
+                highlightedHTML += `<span class="caption-word" data-index="${index}">${word}</span> `;
             }
         });
         
         currentCaption.innerHTML = highlightedHTML.trim();
+        
+        // Add click handlers to each word
+        document.querySelectorAll('.caption-word').forEach(wordEl => {
+            wordEl.addEventListener('click', () => {
+                const wordIndex = parseInt(wordEl.getAttribute('data-index'));
+                const activeCaption = getActiveCaption();
+                if (activeCaption) {
+                    setWordTiming(activeCaption.id, wordIndex, audioPlayer.currentTime);
+                }
+            });
+        });
     }
 
     // Get current active caption
@@ -209,6 +223,32 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeCaption) {
             // Store the current active caption text for word matching
             currentActiveCaptionText = activeCaption.text;
+            
+            // Reset next word counter when caption changes
+            if (activeCaption.id !== currentCaptionId) {
+                nextWordToHighlight = 0;
+                currentCaptionId = activeCaption.id;
+            }
+
+            // Check if any words have custom timing that matches current time
+            const words = activeCaption.text.split(/\s+/);
+            lastRecognizedWords = [];
+            
+            words.forEach((word, index) => {
+                const key = `${activeCaption.id}-${index}`;
+                if (customWordTimings.has(key)) {
+                    const wordTime = customWordTimings.get(key);
+                    // Match with time threshold
+                    if (Math.abs(currentTime - wordTime) < 0.15) {
+                        lastRecognizedWords = [word.toLowerCase().replace(/[.,!?;()'"]/g, '')];
+                    }
+                }
+            });
+            
+            // If no custom timings match, fall back to existing detection
+            if (lastRecognizedWords.length === 0 && isRecognitionActive) {
+                // Existing word detection logic stays in place
+            }
 
             // Display caption with potential highlighted words
             displayCaptionWithHighlights(activeCaption.text);
@@ -226,6 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             currentActiveCaptionText = '';
             currentCaption.textContent = 'No caption for this time';
+            currentCaptionId = null;
         }
     });
 
@@ -361,6 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Render captions list
     function renderCaptions() {
         captionsList.innerHTML = '';
+        currentCaptionId = null;
 
         captions.forEach((caption, index) => {
             const captionItem = document.createElement('div');
@@ -373,20 +415,46 @@ document.addEventListener('DOMContentLoaded', () => {
             captionItem.innerHTML = `
                 <div class="caption-time">${startTimeFormatted} - ${endTimeFormatted}</div>
                 <div class="caption-text">
-                    <textarea placeholder="Enter caption here...">${caption.text}</textarea>
+                    <div class="caption-display">${caption.text}</div>
+                    <textarea class="caption-editor" style="display: none;">${caption.text}</textarea>
                 </div>
                 <div class="caption-actions">
-                    <button class="save-btn">Save</button>
-                    <button class="edit-btn">Edit</button>
+                    <button class="edit-toggle-btn">Edit</button>
+                    <button class="save-btn" style="display: none;">Save</button>
                     <button class="delete-btn">Delete</button>
                 </div>
             `;
 
-            // Save caption text
+            // Toggle edit mode
+            const editToggleBtn = captionItem.querySelector('.edit-toggle-btn');
+            const captionDisplay = captionItem.querySelector('.caption-display');
+            const captionEditor = captionItem.querySelector('.caption-editor');
             const saveBtn = captionItem.querySelector('.save-btn');
+            
+            editToggleBtn.addEventListener('click', () => {
+                if (captionEditor.style.display === 'none') {
+                    captionDisplay.style.display = 'none';
+                    captionEditor.style.display = 'block';
+                    saveBtn.style.display = 'inline-block';
+                    editToggleBtn.textContent = 'Cancel';
+                } else {
+                    captionDisplay.style.display = 'block';
+                    captionEditor.style.display = 'none';
+                    saveBtn.style.display = 'none';
+                    editToggleBtn.textContent = 'Edit';
+                    // Reset textarea to original text
+                    captionEditor.value = caption.text;
+                }
+            });
+
+            // Save caption text
             saveBtn.addEventListener('click', () => {
-                const textarea = captionItem.querySelector('textarea');
-                caption.text = textarea.value;
+                caption.text = captionEditor.value;
+                captionDisplay.textContent = caption.text;
+                captionDisplay.style.display = 'block';
+                captionEditor.style.display = 'none';
+                saveBtn.style.display = 'none';
+                editToggleBtn.textContent = 'Edit';
                 saveBtn.textContent = 'Saved!';
                 setTimeout(() => {
                     saveBtn.textContent = 'Save';
@@ -400,12 +468,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateCaptionEndTimes();
                 updateTimeline();
                 renderCaptions();
-            });
-
-            // Edit caption (seek to time)
-            const editBtn = captionItem.querySelector('.edit-btn');
-            editBtn.addEventListener('click', () => {
-                audioPlayer.currentTime = caption.startTime;
             });
 
             captionsList.appendChild(captionItem);
@@ -455,5 +517,35 @@ document.addEventListener('DOMContentLoaded', () => {
         const milliseconds = Math.floor((timeInSeconds % 1) * 1000);
 
         return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')},${String(milliseconds).padStart(3, '0')}`;
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && !audioPlayer.paused && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
+            e.preventDefault(); // Prevent space from triggering play/pause
+            const activeCaption = getActiveCaption();
+            if (activeCaption) {
+                setWordTiming(activeCaption.id, nextWordToHighlight, audioPlayer.currentTime);
+                nextWordToHighlight++;
+                // Reset counter if we've reached the end of words in this caption
+                if (nextWordToHighlight >= activeCaption.text.split(/\s+/).length) {
+                    nextWordToHighlight = 0;
+                }
+            }
+        }
+    });
+    
+    function setWordTiming(captionId, wordIndex, time) {
+        const key = `${captionId}-${wordIndex}`;
+        customWordTimings.set(key, time);
+        
+        // Update the display to show this word is now timed
+        const activeCaption = getActiveCaption();
+        if (activeCaption && activeCaption.id === captionId) {
+            // Refresh the highlighted words
+            lastRecognizedWords = [activeCaption.text.split(/\s+/)[wordIndex].toLowerCase().replace(/[.,!?;()'"]/g, '')];
+            highlightWords();
+        }
+        
+        console.log(`Set timing for word ${wordIndex} in caption ${captionId} to ${formatTime(time)}`);
     }
 });
