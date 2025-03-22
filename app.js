@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const audioPlayer = document.getElementById('audioPlayer');
     const markTimeBtn = document.getElementById('markTimeBtn');
     const playPauseBtn = document.getElementById('playPauseBtn');
-    const fixedPauseBtn = document.getElementById('fixedPauseBtn');
+    const fixedPlayPauseBtn = document.getElementById('fixedPlayPauseBtn');
     const exportBtn = document.getElementById('exportBtn');
     const progressBar = document.getElementById('progressBar');
     const progress = document.getElementById('progress');
@@ -220,33 +220,32 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Play/Pause button
-    playPauseBtn.addEventListener('click', togglePlayPause);
-    
-    // Fixed position pause button
-    fixedPauseBtn.addEventListener('click', togglePlayPause);
-    
-    // Function to toggle play/pause state
-    function togglePlayPause() {
+    playPauseBtn.addEventListener('click', () => {
         if (audioPlayer.paused) {
             audioPlayer.play();
-            fixedPauseBtn.classList.remove('paused');
-            fixedPauseBtn.classList.add('playing');
         } else {
             audioPlayer.pause();
-            fixedPauseBtn.classList.remove('playing');
-            fixedPauseBtn.classList.add('paused');
         }
-    }
+    });
     
-    // Update fixed button state when audio player state changes
+    // Fixed Play/Pause button
+    fixedPlayPauseBtn.addEventListener('click', () => {
+        if (audioPlayer.paused) {
+            audioPlayer.play();
+            fixedPlayPauseBtn.textContent = "⏸️";
+        } else {
+            audioPlayer.pause();
+            fixedPlayPauseBtn.textContent = "▶️";
+        }
+    });
+    
+    // Update fixed button icon when playback state changes
     audioPlayer.addEventListener('play', () => {
-        fixedPauseBtn.classList.remove('paused');
-        fixedPauseBtn.classList.add('playing');
+        fixedPlayPauseBtn.textContent = "⏸️";
     });
     
     audioPlayer.addEventListener('pause', () => {
-        fixedPauseBtn.classList.remove('playing');
-        fixedPauseBtn.classList.add('paused');
+        fixedPlayPauseBtn.textContent = "▶️";
     });
     
     // Mark current time
