@@ -20,75 +20,143 @@ document.addEventListener('DOMContentLoaded', () => {
     let audioAnalyzer = null;
     let audioData = null;
     let speechDetector = null;
+    let lastWordStartTime = 0;
+    let wordTimingMap = new Map();
+    let currentWordIndex = -1;
 
-    // Initialize audio processing
+    // Initialize audio processing with improved speech detection
     function initAudioProcessing() {
         if (!audioContext) {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             audioSource = audioContext.createMediaElementSource(audioPlayer);
             audioAnalyzer = audioContext.createAnalyser();
-            audioAnalyzer.fftSize = 2048;
+            audioAnalyzer.fftSize = 4096; // Higher resolution for better analysis
             
             audioSource.connect(audioAnalyzer);
             audioSource.connect(audioContext.destination);
             
             audioData = new Uint8Array(audioAnalyzer.frequencyBinCount);
             
-            // Simple audio energy detector for demonstration
+            // Start advanced speech detection
             detectSpeechFromAudio();
+            
+            // Pre-process captions to estimate word timing
+            preprocessCaptionsForWordTiming();
         }
     }
 
-    // Analyze audio data to detect speech patterns
+    // Pre-process captions to create word timing estimates
+    function preprocessCaptionsForWordTiming() {
+        captions.forEach(caption => {
+            const duration = caption.endTime - caption.startTime;
+            const words = caption.text.split(/\s+/);
+            const wordDuration = duration / words.length;
+            
+            // Create timing map for each word
+            words.forEach((word, index) => {
+                const estimatedStart = caption.startTime + (index * wordDuration);
+                const estimatedEnd = estimatedStart + wordDuration;
+                
+                // Store with caption id for context
+                const key = `${caption.id}-${index}`;
+                wordTimingMap.set(key, {
+                    word: word.toLowerCase().replace(/[.,!?;()'"]/g, ''),
+                    start: estimatedStart,
+                    end: estimatedEnd,
+                    index: index,
+                    captionId: caption.id
+                });
+            });
+        });
+    }
+
+    // Analyze audio data to detect speech patterns with advanced features
     function detectSpeechFromAudio() {
         if (!isRecognitionActive) return;
         
         audioAnalyzer.getByteFrequencyData(audioData);
         
-        // Calculate energy in voice frequency range (roughly 300Hz-3000Hz)
-        const voiceBandStart = Math.floor(300 * audioAnalyzer.frequencyBinCount / audioContext.sampleRate);
-        const voiceBandEnd = Math.floor(3000 * audioAnalyzer.frequencyBinCount / audioContext.sampleRate);
+        // Calculate energy across different frequency bands for better speech detection
+        const lowBand = calculateBandEnergy(80, 300);
+        const midBand = calculateBandEnergy(300, 1500);
+        const highBand = calculateBandEnergy(1500, 3500);
         
-        let voiceEnergy = 0;
-        for (let i = voiceBandStart; i < voiceBandEnd; i++) {
-            voiceEnergy += audioData[i];
-        }
-        voiceEnergy /= (voiceBandEnd - voiceBandStart);
+        // Voice detection based on energy ratios
+        const currentTime = audioPlayer.currentTime;
+        const activeCaption = getActiveCaption();
         
-        // If we detect voice energy above threshold
-        if (voiceEnergy > 40 && currentActiveCaptionText) {
-            // Simulate word detection based on audio energy
-            simulateWordRecognition(currentActiveCaptionText, voiceEnergy);
+        if (activeCaption) {
+            // Find which word should be active based on time
+            const words = activeCaption.text.split(/\s+/);
+            const duration = activeCaption.endTime - activeCaption.startTime;
+            const timeIntoCaptionPct = (currentTime - activeCaption.startTime) / duration;
+            
+            // Dynamic word selection algorithm
+            const wordTimingThreshold = 0.15; // threshold for energy to detect a new word
+            const speechEnergy = midBand * 0.7 + highBand * 0.3;
+            
+            // Detect word changes through energy spikes
+            if (speechEnergy > 50 && // Audio energy threshold
+                (currentTime - lastWordStartTime) > 0.2) { // Minimum word duration
+                
+                // Find the best matching word based on timing
+                const wordIndex = Math.min(
+                    Math.floor(timeIntoCaptionPct * words.length),
+                    words.length - 1
+                );
+                
+                // Only change highlighted word if significant enough change detected
+                if (wordIndex !== currentWordIndex) {
+                    currentWordIndex = wordIndex;
+                    lastWordStartTime = currentTime;
+                    lastRecognizedWords = [words[wordIndex].toLowerCase().replace(/[.,!?;()'"]/g, '')];
+                    highlightWords();
+                }
+            }
+            
+            // If energy drops significantly, consider it silence between words
+            if (speechEnergy < 20 && midBand < 15) {
+                // Handle silence if needed
+            }
         }
         
         // Continue analyzing
         requestAnimationFrame(detectSpeechFromAudio);
     }
-
-    // Simulate word recognition based on audio energy and timing
-    function simulateWordRecognition(captionText, energy) {
-        if (!captionText) return;
+    
+    // Calculate energy in a specific frequency band
+    function calculateBandEnergy(minFreq, maxFreq) {
+        const nyquist = audioContext.sampleRate / 2;
+        const minBin = Math.floor(minFreq * audioAnalyzer.frequencyBinCount / nyquist);
+        const maxBin = Math.floor(maxFreq * audioAnalyzer.frequencyBinCount / nyquist);
         
-        const words = captionText.toLowerCase().split(/\s+/);
-        
-        // Use current time to determine which word might be spoken
-        const captionDuration = getActiveCaptionDuration();
-        if (!captionDuration) return;
-        
-        const currentCaption = getActiveCaption();
-        if (!currentCaption) return;
-        
-        const timeIntoCaption = audioPlayer.currentTime - currentCaption.startTime;
-        const percentComplete = timeIntoCaption / captionDuration;
-        
-        // Estimate which word is being spoken based on time into caption
-        const estimatedWordIndex = Math.floor(percentComplete * words.length);
-        
-        if (estimatedWordIndex >= 0 && estimatedWordIndex < words.length) {
-            // Update recognized words
-            lastRecognizedWords = [words[estimatedWordIndex]];
-            highlightWords();
+        let energy = 0;
+        for (let i = minBin; i < maxBin; i++) {
+            energy += audioData[i];
         }
+        return energy / (maxBin - minBin);
+    }
+
+    // Improved word highlighting with smoother transitions
+    function highlightWords() {
+        if (!currentActiveCaptionText) return;
+
+        const words = currentActiveCaptionText.split(/\s+/);
+        const wordsLower = currentActiveCaptionText.toLowerCase().split(/\s+/);
+        
+        let highlightedHTML = '';
+        
+        words.forEach((word, index) => {
+            const cleanWord = wordsLower[index].replace(/[.,!?;()'"]/g, '');
+            
+            if (lastRecognizedWords.includes(cleanWord)) {
+                highlightedHTML += `<span class="highlighted-word">${word}</span> `;
+            } else {
+                highlightedHTML += `${word} `;
+            }
+        });
+        
+        currentCaption.innerHTML = highlightedHTML.trim();
     }
 
     // Get current active caption
@@ -199,13 +267,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Stop speech processing
     function stopSpeechProcessing() {
         isRecognitionActive = false;
-    }
-
-    // Highlight words in current caption based on speech recognition
-    function highlightWords() {
-        if (currentActiveCaptionText) {
-            displayCaptionWithHighlights(currentActiveCaptionText);
-        }
     }
 
     // Display caption with highlighted words
