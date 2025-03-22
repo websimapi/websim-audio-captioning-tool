@@ -8,6 +8,37 @@ import {
     showWordTimeEditor 
 } from './wordTimingUtils.js';
 import { createCaptionEditor } from './captionEditor.js';
+import { renderCaptions, initializeLyricsDisplay } from './captionRendering.js';
+
+export function updateCaptionEndTimes(captions, audioPlayer) {
+    captions.forEach((caption, index) => {
+        if (index < captions.length - 1) {
+            caption.endTime = captions[index + 1].startTime;
+        } else {
+            caption.endTime = audioPlayer.duration;
+        }
+    });
+}
+
+export function updateTimeline(captions, audioPlayer) {
+    const timeMarkers = document.getElementById('timeMarkers');
+    timeMarkers.innerHTML = '';
+    
+    captions.forEach(caption => {
+        const percentage = (caption.startTime / audioPlayer.duration) * 100;
+        const marker = document.createElement('div');
+        marker.className = 'time-marker';
+        marker.style.left = `${percentage}%`;
+        marker.setAttribute('data-time', caption.startTime);
+        marker.setAttribute('data-id', caption.id);
+        
+        marker.addEventListener('click', () => {
+            audioPlayer.currentTime = caption.startTime;
+        });
+        
+        timeMarkers.appendChild(marker);
+    });
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     const audioPlayer = document.getElementById('audioPlayer');
@@ -16,11 +47,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportBtn = document.getElementById('exportBtn');
     const progressBar = document.getElementById('progressBar');
     const progress = document.getElementById('progress');
-    const timeMarkers = document.getElementById('timeMarkers');
     const captionsList = document.getElementById('captionsList');
     const currentCaption = document.getElementById('currentCaption');
     const wordTimingToggle = document.getElementById('wordTimingToggle');
     const captionEditorPanel = document.getElementById('captionEditorPanel');
+    const lyricsDisplay = document.getElementById('lyricsDisplay');
     
     // Flag to track word timing mode
     let wordTimingMode = false;
@@ -37,6 +68,22 @@ document.addEventListener('DOMContentLoaded', () => {
             text: caption.text,
             wordTimings: caption.wordTimings || [] // Use provided word timings
         }));
+        
+        // Once loaded, render the captions
+        audioPlayer.addEventListener('loadedmetadata', () => {
+            updateCaptionEndTimes(captions, audioPlayer);
+            updateTimeline(captions, audioPlayer);
+            renderCaptions(captions, captionsList, audioPlayer, refreshAllViews);
+            initializeLyricsDisplay(captions, lyricsDisplay);
+            initializeCaptionEditor();
+        });
+    }
+    
+    // Function to refresh all views
+    function refreshAllViews() {
+        renderCaptions(captions, captionsList, audioPlayer, refreshAllViews);
+        initializeLyricsDisplay(captions, lyricsDisplay);
+        initializeCaptionEditor();
     }
     
     // Update progress bar and current caption during playback
@@ -87,8 +134,12 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.caption-item').forEach(item => {
                 if (parseInt(item.getAttribute('data-id')) === activeCaption.id) {
                     item.classList.add('active');
-                    // Scroll to the active caption
-                    item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    // Scroll to the active caption if it's not in view
+                    const itemRect = item.getBoundingClientRect();
+                    const containerRect = captionsList.getBoundingClientRect();
+                    if (itemRect.bottom > containerRect.bottom || itemRect.top < containerRect.top) {
+                        item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
                 } else {
                     item.classList.remove('active');
                 }
@@ -97,29 +148,6 @@ document.addEventListener('DOMContentLoaded', () => {
             currentCaption.textContent = 'No caption for this time';
         }
     });
-    
-    // Function to set timing for a specific word
-    function setWordTimingInCaption(captionId, wordIndex) {
-        const caption = captions.find(c => c.id === captionId);
-        if (!caption) return;
-        
-        setWordTiming(caption, wordIndex, audioPlayer.currentTime);
-        
-        // Update display
-        const wordSpans = document.querySelectorAll('.word-span');
-        wordSpans.forEach(span => {
-            if (parseInt(span.dataset.captionId) === captionId && parseInt(span.dataset.index) === wordIndex) {
-                const timeDisplay = span.querySelector('.word-time');
-                timeDisplay.textContent = formatTime(audioPlayer.currentTime);
-                
-                // Show the time momentarily
-                span.classList.add('editing');
-                setTimeout(() => {
-                    span.classList.remove('editing');
-                }, 1500);
-            }
-        });
-    }
     
     // Toggle word timing mode
     wordTimingToggle.addEventListener('change', function() {
@@ -156,6 +184,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // If there are more words to time
                 if (nextWordIndex < words.length) {
+                    // Assuming setWordTimingInCaption function is defined elsewhere in the code
+                    // If not, you'll need to define it or adjust this part according to your needs
                     setWordTimingInCaption(activeCaption.id, nextWordIndex);
                 }
             }
@@ -212,265 +242,25 @@ document.addEventListener('DOMContentLoaded', () => {
         // Sort captions by time
         captions.sort((a, b) => a.startTime - b.startTime);
         
-        // Update endTimes for all captions
-        updateCaptionEndTimes();
-        updateTimeline();
-        renderCaptions();
+        updateCaptionEndTimes(captions, audioPlayer);
+        updateTimeline(captions, audioPlayer);
+        renderCaptions(captions, captionsList, audioPlayer, refreshAllViews);
     });
     
-    // Update endTimes for all captions
-    function updateCaptionEndTimes() {
-        captions.forEach((caption, index) => {
-            if (index < captions.length - 1) {
-                caption.endTime = captions[index + 1].startTime;
-            } else {
-                caption.endTime = audioPlayer.duration;
-            }
-        });
-    }
-    
     // Click on progress bar to seek
-    progressBar.addEventListener('click', (e) => {
-        const rect = progressBar.getBoundingClientRect();
+    document.getElementById('progressBar').addEventListener('click', (e) => {
+        const rect = document.getElementById('progressBar').getBoundingClientRect();
         const pos = (e.clientX - rect.left) / rect.width;
         audioPlayer.currentTime = pos * audioPlayer.duration;
     });
     
-    // Update the timeline with time markers
-    function updateTimeline() {
-        timeMarkers.innerHTML = '';
-        
-        captions.forEach(caption => {
-            const percentage = (caption.startTime / audioPlayer.duration) * 100;
-            const marker = document.createElement('div');
-            marker.className = 'time-marker';
-            marker.style.left = `${percentage}%`;
-            marker.setAttribute('data-time', caption.startTime);
-            marker.setAttribute('data-id', caption.id);
-            
-            marker.addEventListener('click', () => {
-                audioPlayer.currentTime = caption.startTime;
-            });
-            
-            timeMarkers.appendChild(marker);
-        });
-    }
-    
-    // Render captions list with word timing data
-    function renderCaptions() {
-        captionsList.innerHTML = '';
-        
-        captions.forEach((caption, index) => {
-            const captionItem = document.createElement('div');
-            captionItem.className = 'caption-item';
-            captionItem.setAttribute('data-id', caption.id);
-            
-            const startTimeFormatted = formatTime(caption.startTime);
-            const endTimeFormatted = formatTime(caption.endTime);
-            
-            captionItem.innerHTML = `
-                <div class="caption-time">${startTimeFormatted} - ${endTimeFormatted}</div>
-                <div class="caption-text">
-                    <textarea placeholder="Enter caption here...">${caption.text}</textarea>
-                </div>
-                <div class="word-timings-container">
-                    <details>
-                        <summary>Word Timings</summary>
-                        <div class="word-timings-list"></div>
-                    </details>
-                </div>
-                <div class="caption-actions">
-                    <button class="save-btn">Save</button>
-                    <button class="edit-btn">Edit</button>
-                    <button class="delete-btn">Delete</button>
-                </div>
-            `;
-            
-            // Populate word timings if available
-            if (caption.wordTimings && caption.wordTimings.length > 0) {
-                const wordTimingsList = captionItem.querySelector('.word-timings-list');
-                const words = caption.text.split(' ');
-                
-                words.forEach((word, idx) => {
-                    if (caption.wordTimings[idx] && caption.wordTimings[idx].time !== undefined) {
-                        const wordTimingItem = document.createElement('div');
-                        wordTimingItem.className = 'word-timing-item';
-                        wordTimingItem.innerHTML = `
-                            <span class="word-text">${word}</span>: 
-                            <span class="word-time-value">${formatTime(caption.wordTimings[idx].time)}</span>
-                            <button class="edit-word-time-btn" data-index="${idx}">Edit</button>
-                        `;
-                        wordTimingsList.appendChild(wordTimingItem);
-                        
-                        // Add edit button listener
-                        wordTimingItem.querySelector('.edit-word-time-btn').addEventListener('click', (e) => {
-                            const wordIndex = parseInt(e.target.dataset.index);
-                            const currentTime = caption.wordTimings[wordIndex].time;
-                            
-                            showWordTimeEditor(
-                                wordTimingItem,
-                                caption.id,
-                                wordIndex,
-                                currentTime,
-                                (captionId, wordIndex, time) => {
-                                    caption.wordTimings[wordIndex].time = time;
-                                    wordTimingItem.querySelector('.word-time-value').textContent = formatTime(time);
-                                }
-                            );
-                        });
-                    }
-                });
-            }
-            
-            // Save caption text
-            const saveBtn = captionItem.querySelector('.save-btn');
-            saveBtn.addEventListener('click', () => {
-                const textarea = captionItem.querySelector('textarea');
-                const newText = textarea.value;
-                const oldText = caption.text;
-                caption.text = newText;
-                
-                // Update word timings if text has changed
-                if (oldText !== newText && caption.wordTimings && caption.wordTimings.length > 0) {
-                    const oldWords = oldText.split(' ');
-                    const newWords = newText.split(' ');
-                    
-                    // If word count changed, adjust the word timings array
-                    if (oldWords.length !== newWords.length) {
-                        // Keep existing timings for words that still exist
-                        const newWordTimings = [];
-                        for (let i = 0; i < Math.min(oldWords.length, newWords.length); i++) {
-                            newWordTimings[i] = caption.wordTimings[i] || {};
-                        }
-                        caption.wordTimings = newWordTimings;
-                    }
-                }
-                
-                // Refresh the word timings list
-                captionItem.querySelector('.word-timings-list').innerHTML = '';
-                if (caption.wordTimings && caption.wordTimings.length > 0) {
-                    const wordTimingsList = captionItem.querySelector('.word-timings-list');
-                    const words = caption.text.split(' ');
-                    
-                    words.forEach((word, idx) => {
-                        if (caption.wordTimings[idx] && caption.wordTimings[idx].time !== undefined) {
-                            const wordTimingItem = document.createElement('div');
-                            wordTimingItem.className = 'word-timing-item';
-                            wordTimingItem.innerHTML = `
-                                <span class="word-text">${word}</span>: 
-                                <span class="word-time-value">${formatTime(caption.wordTimings[idx].time)}</span>
-                                <button class="edit-word-time-btn" data-index="${idx}">Edit</button>
-                            `;
-                            wordTimingsList.appendChild(wordTimingItem);
-                            
-                            // Add edit button listener
-                            wordTimingItem.querySelector('.edit-word-time-btn').addEventListener('click', (e) => {
-                                const wordIndex = parseInt(e.target.dataset.index);
-                                const currentTime = caption.wordTimings[wordIndex].time;
-                                
-                                showWordTimeEditor(
-                                    wordTimingItem,
-                                    caption.id,
-                                    wordIndex,
-                                    currentTime,
-                                    (captionId, wordIndex, time) => {
-                                        caption.wordTimings[wordIndex].time = time;
-                                        wordTimingItem.querySelector('.word-time-value').textContent = formatTime(time);
-                                    }
-                                );
-                            });
-                        }
-                    });
-                }
-                
-                saveBtn.textContent = 'Saved!';
-                setTimeout(() => {
-                    saveBtn.textContent = 'Save';
-                }, 1000);
-            });
-            
-            // Delete caption
-            const deleteBtn = captionItem.querySelector('.delete-btn');
-            deleteBtn.addEventListener('click', () => {
-                captions = captions.filter(cap => cap.id !== caption.id);
-                updateCaptionEndTimes();
-                updateTimeline();
-                renderCaptions();
-            });
-            
-            // Edit caption (seek to time)
-            const editBtn = captionItem.querySelector('.edit-btn');
-            editBtn.addEventListener('click', () => {
-                audioPlayer.currentTime = caption.startTime;
-            });
-            
-            captionsList.appendChild(captionItem);
-        });
-    }
-    
-    // Initialize lyrics display with word timing data
-    function initializeLyricsDisplay() {
-        const lyricsDisplay = document.getElementById('lyricsDisplay');
-        lyricsDisplay.innerHTML = '';
-        
-        // Add all captions to the lyrics display
-        captions.forEach(caption => {
-            const captionDiv = document.createElement('div');
-            captionDiv.className = 'lyrics-line';
-            captionDiv.dataset.startTime = caption.startTime;
-            captionDiv.dataset.endTime = caption.endTime;
-            
-            // Split the caption text into words
-            const words = caption.text.split(' ');
-            words.forEach((word, index) => {
-                const wordSpan = document.createElement('span');
-                wordSpan.className = 'lyrics-word';
-                wordSpan.textContent = word;
-                
-                // Add word timing data if available
-                if (caption.wordTimings && caption.wordTimings[index] && caption.wordTimings[index].time !== undefined) {
-                    wordSpan.dataset.time = caption.wordTimings[index].time;
-                }
-                
-                captionDiv.appendChild(wordSpan);
-                
-                // Add space between words except for the last word
-                if (index < words.length - 1) {
-                    captionDiv.appendChild(document.createTextNode(' '));
-                }
-            });
-            
-            lyricsDisplay.appendChild(captionDiv);
-        });
-    }
-    
     // Initialize the caption editor panel
     function initializeCaptionEditor() {
-        const editor = createCaptionEditor(captions, () => {
-            // Update callback to refresh displays when word timings change
-            renderCaptions();
-            initializeLyricsDisplay();
-        });
+        const editor = createCaptionEditor(captions, refreshAllViews);
         
         captionEditorPanel.innerHTML = '';
         captionEditorPanel.appendChild(editor.getElement());
     }
-    
-    // Update the renderCaptions function to also update the caption editor
-    const originalRenderCaptions = renderCaptions;
-    renderCaptions = function() {
-        originalRenderCaptions();
-        initializeCaptionEditor();
-    };
-    
-    // Call the initialization functions explicitly after audio loads
-    audioPlayer.addEventListener('loadedmetadata', () => {
-        updateCaptionEndTimes();
-        updateTimeline();
-        renderCaptions();
-        initializeLyricsDisplay();
-        initializeCaptionEditor(); 
-    });
     
     // Update captions export to include word timings
     exportBtn.addEventListener('click', () => {

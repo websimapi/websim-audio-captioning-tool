@@ -200,6 +200,7 @@ textarea {
     justify-content: center;
     flex-wrap: wrap;
     gap: 5px;
+    line-height: 1.8;
 }
 
 .word-span {
@@ -208,11 +209,13 @@ textarea {
     padding: 2px 4px;
     border-radius: 3px;
     margin: 0 2px;
+    transition: background-color 0.2s, transform 0.2s;
 }
 
 .word-span.active {
     background-color: #e74c3c;
     color: white;
+    transform: scale(1.05);
 }
 
 .word-time {
@@ -226,6 +229,7 @@ textarea {
     border-radius: 3px;
     white-space: nowrap;
     display: none;
+    z-index: 10;
 }
 
 .word-span:hover .word-time, 
@@ -326,6 +330,44 @@ details summary:hover {
     align-items: center;
 }
 
+.caption-editor .text-preview {
+    background-color: #f9f9f9;
+    padding: 10px;
+    border-radius: 4px;
+    margin: 10px 0;
+    font-size: 16px;
+    line-height: 1.5;
+    font-weight: bold;
+}
+
+.caption-editor .text-edit {
+    margin: 10px 0 15px;
+}
+
+.caption-editor .caption-text-edit {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    min-height: 60px;
+    font-family: inherit;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.caption-editor .save-text-btn {
+    background-color: #27ae60;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.caption-editor .save-text-btn:hover {
+    background-color: #219653;
+}
+
 .caption-editor .timing-table {
     width: 100%;
     border-collapse: collapse;
@@ -345,7 +387,7 @@ details summary:hover {
 }
 
 .caption-editor .timing-table .edit-cell {
-    width: 80px;
+    width: 120px;
     text-align: center;
 }
 
@@ -359,14 +401,15 @@ details summary:hover {
 .caption-editor .save-timing-btn {
     background-color: #27ae60;
     margin-left: 5px;
+    color: white;
+    border: none;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
 }
 
 .caption-editor .save-timing-btn:hover {
     background-color: #219653;
-}
-
-.caption-editor .add-word-btn {
-    margin-top: 10px;
 }
 
 .caption-editor .timing-display {
@@ -376,6 +419,7 @@ details summary:hover {
 
 .caption-editor .timing-display .time {
     margin-right: 10px;
+    font-family: monospace;
 }
 
 .caption-editor .timing-button-group {
@@ -388,23 +432,8 @@ details summary:hover {
     font-size: 0.9em;
 }
 
-.caption-editor .text-preview {
-    background-color: #f9f9f9;
-    padding: 10px;
-    border-radius: 4px;
-    margin: 10px 0;
-    font-size: 16px;
-    line-height: 1.5;
-}
-
-.caption-editor .text-preview .highlighted {
-    background-color: #3498db;
-    color: white;
-    padding: 2px 4px;
-    border-radius: 3px;
-}
-
 .caption-list-container {
     max-height: 500px;
     overflow-y: auto;
+    padding-right: 10px;
 }

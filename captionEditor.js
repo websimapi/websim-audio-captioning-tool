@@ -10,19 +10,10 @@ export function createCaptionEditor(captions, updateCallback) {
         const listContainer = document.createElement('div');
         listContainer.className = 'caption-list-container';
         
-        // Check if captions array is valid and has items
-        if (captions && captions.length > 0) {
-            captions.forEach((caption, index) => {
-                const editorElement = createSingleCaptionEditor(caption, index);
-                listContainer.appendChild(editorElement);
-            });
-        } else {
-            // Show a message if no captions are available
-            const noDataMsg = document.createElement('div');
-            noDataMsg.textContent = 'No caption data available';
-            noDataMsg.className = 'no-data-message';
-            listContainer.appendChild(noDataMsg);
-        }
+        captions.forEach((caption, index) => {
+            const editorElement = createSingleCaptionEditor(caption, index);
+            listContainer.appendChild(editorElement);
+        });
         
         editorContainer.appendChild(listContainer);
     }
@@ -48,6 +39,38 @@ export function createCaptionEditor(captions, updateCallback) {
         textPreview.className = 'text-preview';
         textPreview.textContent = caption.text;
         editorElement.appendChild(textPreview);
+        
+        // Add text edit feature
+        const textEdit = document.createElement('div');
+        textEdit.className = 'text-edit';
+        textEdit.innerHTML = `
+            <textarea class="caption-text-edit">${caption.text}</textarea>
+            <button class="save-text-btn">Save Text</button>
+        `;
+        editorElement.appendChild(textEdit);
+        
+        // Save text button listener
+        const saveTextBtn = textEdit.querySelector('.save-text-btn');
+        saveTextBtn.addEventListener('click', () => {
+            const newText = textEdit.querySelector('.caption-text-edit').value;
+            caption.text = newText;
+            textPreview.textContent = newText;
+            
+            // Update word timings array if needed
+            if (caption.wordTimings) {
+                const wordCount = newText.split(' ').length;
+                while (caption.wordTimings.length > wordCount) {
+                    caption.wordTimings.pop();
+                }
+                while (caption.wordTimings.length < wordCount) {
+                    caption.wordTimings.push({});
+                }
+            }
+            
+            if (updateCallback) updateCallback();
+            saveTextBtn.textContent = 'Saved!';
+            setTimeout(() => { saveTextBtn.textContent = 'Save Text'; }, 1000);
+        });
         
         // Create word timing table
         const table = document.createElement('table');
