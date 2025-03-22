@@ -212,10 +212,11 @@ function update() {
     
     // Update camera to follow the ball
     if (ball) {
-        const cameraDistance = 40; 
+        const cameraDistance = 50; 
+        const cameraHeight = 35;   
         camera.position.x = ball.position.x + Math.sin(cameraRotation) * cameraDistance;
         camera.position.z = ball.position.z + Math.cos(cameraRotation) * cameraDistance;
-        camera.position.y = ball.position.y + 25; 
+        camera.position.y = ball.position.y + cameraHeight; 
         camera.lookAt(ball.position);
     }
     
@@ -234,17 +235,38 @@ function update() {
 
 function updateDancerPosition() {
     if (skyboxDancer && camera) {
-        // Position dancer always in view of camera
+        // Get current camera direction
         const cameraDirection = new THREE.Vector3();
         camera.getWorldDirection(cameraDirection);
         
-        // Position dancer in the distance in front of camera (much further away)
-        skyboxDancer.position.copy(camera.position).add(
-            cameraDirection.multiplyScalar(400) 
-        );
+        // Position dancer 100 units in front of the camera at a fixed height
+        // to ensure it's always visible
+        const distanceFromCamera = 200;
+        const fixedHeight = 20; // Fixed height to ensure visibility
+        
+        // Calculate position in front of camera
+        const targetPosition = new THREE.Vector3();
+        targetPosition.copy(camera.position)
+            .add(cameraDirection.multiplyScalar(distanceFromCamera));
+        
+        // Set fixed height
+        targetPosition.y = fixedHeight;
+        
+        // Smoothly move dancer to the target position (lerp)
+        if (skyboxDancer.position.distanceTo(targetPosition) > 1) {
+            skyboxDancer.position.lerp(targetPosition, 0.05);
+        }
         
         // Make dancer always face the camera
         skyboxDancer.lookAt(camera.position);
+        
+        // Ensure the dancer is always dancing by checking animation
+        if (dancerMixer && dancerMixer.clipAction) {
+            const action = dancerMixer.clipAction(skyboxDancer.animations[0]);
+            if (action && !action.isRunning()) {
+                action.play();
+            }
+        }
     }
 }
 

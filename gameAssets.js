@@ -28,21 +28,26 @@ async function loadSkyboxDancer(scene) {
             'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/models/fbx/Samba%20Dancing.fbx',
             (fbx) => {
                 const dancer = fbx;
-                dancer.scale.set(0.2, 0.2, 0.2);
-                dancer.position.set(0, 0, -200);
+                dancer.scale.set(0.1, 0.1, 0.1); 
+                dancer.position.set(0, 0, -200);  
                 dancer.traverse(child => {
                     if (child.isMesh) {
                         child.castShadow = true;
                         child.receiveShadow = true;
+                        if (child.material) {
+                            child.material.emissive = new THREE.Color(0x303030);
+                            child.material.emissiveIntensity = 0.5;
+                        }
                     }
                 });
                 
-                // Create animation mixer
                 const mixer = new THREE.AnimationMixer(dancer);
                 
-                // Play animation
                 if (dancer.animations.length > 0) {
                     const dancingAnimation = mixer.clipAction(dancer.animations[0]);
+                    dancingAnimation.setLoop(THREE.LoopRepeat);
+                    dancingAnimation.clampWhenFinished = false;
+                    dancingAnimation.timeScale = 1.2; 
                     dancingAnimation.play();
                 }
                 
@@ -54,9 +59,8 @@ async function loadSkyboxDancer(scene) {
             },
             (error) => {
                 console.error("Error loading dancer model:", error);
-                // Create a placeholder instead of failing
                 const geometry = new THREE.BoxGeometry(2, 4, 2);
-                const material = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+                const material = new THREE.MeshBasicMaterial({ color: 0xff00ff, emissive: 0x303030 });
                 const dancer = new THREE.Mesh(geometry, material);
                 dancer.position.set(0, 0, -200);
                 scene.add(dancer);
@@ -82,10 +86,8 @@ async function loadRunningHuman(scene) {
                     }
                 });
                 
-                // Create animation mixer
                 const mixer = new THREE.AnimationMixer(runner);
                 
-                // Play animation
                 if (runner.animations.length > 0) {
                     const runAnimation = mixer.clipAction(runner.animations[0]);
                     runAnimation.play();
@@ -99,7 +101,6 @@ async function loadRunningHuman(scene) {
             },
             (error) => {
                 console.error("Error loading runner model:", error);
-                // Create a placeholder instead of failing
                 const geometry = new THREE.BoxGeometry(1, 3, 1);
                 const material = new THREE.MeshBasicMaterial({ color: 0x00ffff });
                 const runner = new THREE.Mesh(geometry, material);

@@ -236,12 +236,13 @@ export function createAttachmentEffect(position, scene) {
 export function createInfiniteGround(scene, world, chunkSize = 100, renderDistance = 3) {
     const groundChunks = new Map(); // Store chunks by their coordinates
     
-    // Create initial ground material
-    const groundMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0xFFD6E0,
-        roughness: 0.7,
-        metalness: 0.1
-    });
+    // Create more colorful ground materials
+    const groundMaterials = [
+        new THREE.MeshStandardMaterial({ color: 0xFFD6E0, roughness: 0.7, metalness: 0.1 }), // Pink
+        new THREE.MeshStandardMaterial({ color: 0xA2D2FF, roughness: 0.7, metalness: 0.1 }), // Light blue
+        new THREE.MeshStandardMaterial({ color: 0xC8FFD4, roughness: 0.7, metalness: 0.1 }), // Mint green
+        new THREE.MeshStandardMaterial({ color: 0xFDFFB6, roughness: 0.7, metalness: 0.1 })  // Pale yellow
+    ];
     
     // Function to create a new chunk at specified coordinates
     function createChunk(x, z) {
@@ -250,25 +251,102 @@ export function createInfiniteGround(scene, world, chunkSize = 100, renderDistan
         // Skip if chunk already exists
         if (groundChunks.has(chunkKey)) return;
         
-        // Three.js ground
-        const groundGeometry = new THREE.PlaneGeometry(chunkSize, chunkSize);
-        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        // Select material based on a pattern
+        const materialIndex = Math.abs(x % 2) + Math.abs(z % 2) * 2;
+        const material = groundMaterials[materialIndex];
+        
+        // Three.js ground with decorative elements
+        const groundGeometry = new THREE.PlaneGeometry(chunkSize, chunkSize, 8, 8);
+        const ground = new THREE.Mesh(groundGeometry, material);
         ground.rotation.x = -Math.PI / 2;
         ground.position.set(x * chunkSize, 0, z * chunkSize);
         ground.receiveShadow = true;
+        
+        // Add some height variation to make terrain more interesting
+        const positionAttribute = groundGeometry.getAttribute('position');
+        for (let i = 0; i < positionAttribute.count; i++) {
+            // Skip the edges to avoid gaps between chunks
+            const u = positionAttribute.getX(i) / chunkSize + 0.5;
+            const v = positionAttribute.getY(i) / chunkSize + 0.5;
+            if (u > 0.1 && u < 0.9 && v > 0.1 && v < 0.9) {
+                // Create gentle rolling hills
+                const noise = Math.sin(u * 5 + x * 3) * Math.cos(v * 5 + z * 3) * 0.5;
+                positionAttribute.setZ(i, noise);
+            }
+        }
+        
+        groundGeometry.computeVertexNormals();
         scene.add(ground);
         
-        // CANNON.js ground (invisible physics plane)
+        // CANNON.js ground (flat for physics simplicity)
         const groundBody = new CANNON.Body({
             type: CANNON.Body.STATIC,
             shape: new CANNON.Plane()
         });
         groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-        groundBody.position.set(x * chunkSize, 0, z * chunkSize);
+        groundBody.position.set(x * chunkSize, -0.5, z * chunkSize); // Lower physics plane to account for terrain height
         world.addBody(groundBody);
         
         // Store the chunk
         groundChunks.set(chunkKey, { ground, groundBody });
+        
+        // Add decorative elements to the terrain
+        addTerrainDecorations(scene, x * chunkSize, z * chunkSize, chunkSize);
+    }
+    
+    // Function to add decorative elements
+    function addTerrainDecorations(scene, x, z, chunkSize) {
+        // Add some small decorative elements to the terrain
+        const decorCount = Math.floor(Math.random() * 5) + 3;
+        
+        for (let i = 0; i < decorCount; i++) {
+            // Random position within the chunk
+            const posX = x + Math.random() * chunkSize - chunkSize/2;
+            const posZ = z + Math.random() * chunkSize - chunkSize/2;
+            
+            // Random decoration type
+            const decorType = Math.floor(Math.random() * 3);
+            
+            if (decorType === 0) {
+                // Create a small mound/hill
+                const hillGeometry = new THREE.SphereGeometry(2 + Math.random() * 3, 8, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+                const hillMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x9ACD32, 
+                    roughness: 0.8,
+                    metalness: 0.1
+                });
+                const hill = new THREE.Mesh(hillGeometry, hillMaterial);
+                hill.position.set(posX, 0, posZ);
+                scene.add(hill);
+            } else if (decorType === 1) {
+                // Create a simple flower
+                const stemGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 8);
+                const stemMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
+                const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+                stem.position.set(posX, 0.5, posZ);
+                
+                const flowerGeometry = new THREE.SphereGeometry(0.3, 8, 8);
+                const flowerColor = [0xFF69B4, 0xFFFF00, 0xFF6347, 0x9370DB][Math.floor(Math.random() * 4)];
+                const flowerMaterial = new THREE.MeshStandardMaterial({ color: flowerColor });
+                const flower = new THREE.Mesh(flowerGeometry, flowerMaterial);
+                flower.position.set(0, 0.7, 0);
+                stem.add(flower);
+                
+                scene.add(stem);
+            } else {
+                // Create a simple rock
+                const rockGeometry = new THREE.DodecahedronGeometry(0.5 + Math.random() * 0.5);
+                const rockMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x808080, 
+                    roughness: 0.9,
+                    metalness: 0.1
+                });
+                const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+                rock.position.set(posX, 0.25, posZ);
+                rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                scene.add(rock);
+            }
+        }
     }
     
     // Function to update chunks based on player position
@@ -283,8 +361,20 @@ export function createInfiniteGround(scene, world, chunkSize = 100, renderDistan
             }
         }
         
-        // Optional: remove far chunks to save memory
-        // This can be implemented if necessary
+        // Optional: Remove far chunks to save memory
+        for (const [key, chunk] of groundChunks.entries()) {
+            const [chunkX, chunkZ] = key.split(',').map(Number);
+            const distance = Math.max(
+                Math.abs(chunkX - Math.floor(playerPos.x / chunkSize)),
+                Math.abs(chunkZ - Math.floor(playerPos.z / chunkSize))
+            );
+            
+            if (distance > renderDistance + 1) {
+                scene.remove(chunk.ground);
+                world.removeBody(chunk.groundBody);
+                groundChunks.delete(key);
+            }
+        }
     }
     
     // Create initial chunks around origin
