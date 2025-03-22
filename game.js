@@ -104,6 +104,10 @@ function setupEventListeners() {
     // Start game button
     startGameBtn.addEventListener('click', () => {
         gameStarted = true;
+        audioPlayer.play();
+        fixedPauseBtn.classList.remove('paused');
+        fixedPauseBtn.classList.add('playing');
+        loadingScreen.style.display = 'none';
     });
     
     // Play/Pause button
@@ -136,7 +140,9 @@ function update() {
         }
         
         // Update lyrics display
-        updateLyrics(audioPlayer.currentTime, config.predefinedCaptions, null, [], lyricsContainer, scene, skyboxDancer);
+        if (audioPlayer && !audioPlayer.paused) {
+            updateLyrics(audioPlayer.currentTime, config.predefinedCaptions, null, [], lyricsContainer, scene, skyboxDancer);
+        }
         
         // Position dancer in the center
         positionDancerInCenter();
