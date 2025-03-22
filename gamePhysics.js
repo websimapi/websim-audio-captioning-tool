@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import * as CANNON from 'cannon-es';
 
 // Physics variables
 export let world;
@@ -7,9 +6,9 @@ export const timeStep = 1/60;
 
 // Initialize physics world
 export function initPhysics() {
-    world = new CANNON.World({
-        gravity: new CANNON.Vec3(0, -9.82, 0)
-    });
+    // world = new CANNON.World({
+    //     gravity: new CANNON.Vec3(0, -9.82, 0)
+    // });
 }
 
 export function createGround(scene, world) {
@@ -26,14 +25,14 @@ export function createGround(scene, world) {
     scene.add(ground);
     
     // CANNON.js ground
-    const groundBody = new CANNON.Body({
-        type: CANNON.Body.STATIC,
-        shape: new CANNON.Plane()
-    });
-    groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-    world.addBody(groundBody);
+    // const groundBody = new CANNON.Body({
+    //     type: CANNON.Body.STATIC,
+    //     shape: new CANNON.Plane()
+    // });
+    // groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+    // world.addBody(groundBody);
     
-    return { ground, groundBody };
+    return { ground };
 }
 
 export function createBall(scene, world, ballRadius, ballMass) {
@@ -51,16 +50,16 @@ export function createBall(scene, world, ballRadius, ballMass) {
     scene.add(ball);
     
     // CANNON.js ball
-    const ballBody = new CANNON.Body({
-        mass: ballMass,
-        shape: new CANNON.Sphere(ballRadius),
-        position: new CANNON.Vec3(0, ballRadius, 0),
-        linearDamping: 0.4,
-        angularDamping: 0.4
-    });
-    world.addBody(ballBody);
+    // const ballBody = new CANNON.Body({
+    //     mass: ballMass,
+    //     shape: new CANNON.Sphere(ballRadius),
+    //     position: new CANNON.Vec3(0, ballRadius, 0),
+    //     linearDamping: 0.4,
+    //     angularDamping: 0.4
+    // });
+    // world.addBody(ballBody);
     
-    return { ball, ballBody };
+    return { ball };
 }
 
 export function createHumans(scene, world, humans, humanBodies) {
@@ -90,46 +89,46 @@ export function createHumans(scene, world, humans, humanBodies) {
         scene.add(human);
         
         // Create physics body
-        const humanBody = new CANNON.Body({
-            mass: size * 2,
-            shape: new CANNON.Box(new CANNON.Vec3(size * 0.25, size * 0.9, size * 0.25)),
-            position: new CANNON.Vec3(x, size * 0.9, z)
-        });
-        world.addBody(humanBody);
+        // const humanBody = new CANNON.Body({
+        //     mass: size * 2,
+        //     shape: new CANNON.Box(new CANNON.Vec3(size * 0.25, size * 0.9, size * 0.25)),
+        //     position: new CANNON.Vec3(x, size * 0.9, z)
+        // });
+        // world.addBody(humanBody);
         
         humans.push({
             mesh: human,
-            body: humanBody,
+            // body: humanBody,
             size: size,
             attached: false
         });
-        humanBodies.push(humanBody);
+        // humanBodies.push(humanBody);
     }
 }
 
-export function updateBallMovement(ballBody, keys) {
-    const force = 800;
+export function updateBallMovement(ball, keys) {
+    // const force = 800;
     
-    if (keys['w']) {
-        ballBody.applyLocalForce(new CANNON.Vec3(0, 0, -force));
-    }
-    if (keys['s']) {
-        ballBody.applyLocalForce(new CANNON.Vec3(0, 0, force));
-    }
-    if (keys['a']) {
-        ballBody.applyLocalForce(new CANNON.Vec3(-force, 0, 0));
-    }
-    if (keys['d']) {
-        ballBody.applyLocalForce(new CANNON.Vec3(force, 0, 0));
-    }
+    // if (keys['w']) {
+    //     ballBody.applyLocalForce(new CANNON.Vec3(0, 0, -force));
+    // }
+    // if (keys['s']) {
+    //     ballBody.applyLocalForce(new CANNON.Vec3(0, 0, force));
+    // }
+    // if (keys['a']) {
+    //     ballBody.applyLocalForce(new CANNON.Vec3(-force, 0, 0));
+    // }
+    // if (keys['d']) {
+    //     ballBody.applyLocalForce(new CANNON.Vec3(force, 0, 0));
+    // }
     
     // Add a small upward force to prevent getting stuck
-    if (ballBody.position.y < 1.5) {
-        ballBody.applyLocalForce(new CANNON.Vec3(0, 50, 0));
-    }
+    // if (ballBody.position.y < 1.5) {
+    //     ballBody.applyLocalForce(new CANNON.Vec3(0, 50, 0));
+    // }
 }
 
-export function checkCollisions(ball, humans, ballRadius, scene, attachedObjects, ballBody, world, ballMass, score) {
+export function checkCollisions(ball, humans, ballRadius, scene, attachedObjects) {
     humans.forEach(human => {
         if (!human.attached) {
             // Calculate distance between ball and human
@@ -139,16 +138,16 @@ export function checkCollisions(ball, humans, ballRadius, scene, attachedObjects
             const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
             
             // If the human is smaller than the ball and close enough, attach it
-            if (distance < ballRadius + human.size * 0.5 && human.size < ballRadius) {
-                attachHumanToBall(human, ball, ballRadius, scene, attachedObjects, ballBody, world, ballMass, score);
-            }
+            // if (distance < ballRadius + human.size * 0.5 && human.size < ballRadius) {
+            //     attachHumanToBall(human, ball, ballRadius, scene, attachedObjects);
+            // }
         }
     });
 }
 
-export function attachHumanToBall(human, ball, ballRadius, scene, attachedObjects, ballBody, world, ballMass, score) {
+export function attachHumanToBall(human, ball, ballRadius, scene, attachedObjects) {
     human.attached = true;
-    world.removeBody(human.body);
+    // world.removeBody(human.body);
     
     // Calculate a random position on the ball's surface
     const phi = Math.random() * Math.PI * 2;
@@ -158,8 +157,8 @@ export function attachHumanToBall(human, ball, ballRadius, scene, attachedObject
     const z = ballRadius * Math.cos(theta);
     
     // Create a constraint to attach the human to the ball
-    const pivotA = new CANNON.Vec3(x, y, z);
-    const pivotB = new CANNON.Vec3(0, 0, 0);
+    // const pivotA = new CANNON.Vec3(x, y, z);
+    // const pivotB = new CANNON.Vec3(0, 0, 0);
     
     // Visually position the human on the ball's surface
     human.mesh.position.set(
@@ -183,26 +182,20 @@ export function attachHumanToBall(human, ball, ballRadius, scene, attachedObject
     });
     
     // Increase ball size slightly with each attachment
-    ballRadius += human.size * 0.1;
-    const newScale = ballRadius / 2;
-    ball.scale.set(newScale, newScale, newScale);
+    // ballRadius += human.size * 0.1;
+    // const newScale = ballRadius / 2;
+    // ball.scale.set(newScale, newScale, newScale);
     
     // Update ball's physics body
-    world.removeBody(ballBody);
-    const newBallBody = new CANNON.Body({
-        mass: ballMass += human.size,
-        shape: new CANNON.Sphere(ballRadius),
-        position: new CANNON.Vec3(ball.position.x, ball.position.y, ball.position.z),
-        linearDamping: 0.4,
-        angularDamping: 0.4
-    });
-    world.addBody(newBallBody);
-    
-    // Increase score
-    score += Math.floor(human.size * 10);
-    
-    // Visual effect for attachment
-    createAttachmentEffect(human.mesh.position, scene);
+    // world.removeBody(ballBody);
+    // const newBallBody = new CANNON.Body({
+    //     mass: ballMass += human.size,
+    //     shape: new CANNON.Sphere(ballRadius),
+    //     position: new CANNON.Vec3(ball.position.x, ball.position.y, ball.position.z),
+    //     linearDamping: 0.4,
+    //     angularDamping: 0.4
+    // });
+    // world.addBody(newBallBody);
 }
 
 export function createAttachmentEffect(position, scene) {
@@ -284,16 +277,16 @@ export function createInfiniteGround(scene, world, chunkSize = 100, renderDistan
         scene.add(ground);
         
         // CANNON.js ground (flat for physics simplicity)
-        const groundBody = new CANNON.Body({
-            type: CANNON.Body.STATIC,
-            shape: new CANNON.Plane()
-        });
-        groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-        groundBody.position.set(x * chunkSize, -0.5, z * chunkSize); // Lower physics plane to account for terrain height
-        world.addBody(groundBody);
+        // const groundBody = new CANNON.Body({
+        //     type: CANNON.Body.STATIC,
+        //     shape: new CANNON.Plane()
+        // });
+        // groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+        // groundBody.position.set(x * chunkSize, -0.5, z * chunkSize); // Lower physics plane to account for terrain height
+        // world.addBody(groundBody);
         
         // Store the chunk
-        groundChunks.set(chunkKey, { ground, groundBody });
+        groundChunks.set(chunkKey, { ground });
         
         // Add decorative elements to the terrain
         addTerrainDecorations(scene, x * chunkSize, z * chunkSize, chunkSize);
@@ -376,7 +369,7 @@ export function createInfiniteGround(scene, world, chunkSize = 100, renderDistan
             
             if (distance > renderDistance + 1) {
                 scene.remove(chunk.ground);
-                world.removeBody(chunk.groundBody);
+                // world.removeBody(chunk.groundBody);
                 groundChunks.delete(key);
             }
         }
