@@ -13,13 +13,16 @@ document.addEventListener('DOMContentLoaded', () => {
     
     let captions = [];
     let srtCaptions = [];
+    let audioLoaded = false;
     
     // Load SRT file
     fetch('/captions.srt')
         .then(response => response.text())
         .then(srtContent => {
             srtCaptions = parseSRT(srtContent);
-            updateTimeline();
+            if (audioLoaded) {
+                updateTimeline();
+            }
         })
         .catch(error => {
             console.error('Error loading SRT file:', error);
@@ -268,6 +271,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Load audio file and setup
     audioPlayer.addEventListener('loadedmetadata', () => {
+        audioLoaded = true;
         updateTimeline();
+    });
+    
+    // Make sure we display captions if the audio starts playing
+    audioPlayer.addEventListener('play', () => {
+        displayCurrentCaption(audioPlayer.currentTime);
     });
 });
