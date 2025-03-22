@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const audioPlayer = document.getElementById('audioPlayer');
     const markTimeBtn = document.getElementById('markTimeBtn');
     const playPauseBtn = document.getElementById('playPauseBtn');
-    const fixedPlayPauseBtn = document.getElementById('fixedPlayPauseBtn');
+    const fixedPauseBtn = document.getElementById('fixedPauseBtn');
     const exportBtn = document.getElementById('exportBtn');
     const progressBar = document.getElementById('progressBar');
     const progress = document.getElementById('progress');
@@ -85,18 +85,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCaptions(captions, captionsList, audioPlayer, refreshAllViews);
         initializeLyricsDisplay(captions, lyricsDisplay);
         initializeCaptionEditor();
-    }
-    
-    // Function to set word timing for a specific caption and word
-    function setWordTimingInCaption(captionId, wordIndex) {
-        const caption = captions.find(c => c.id === captionId);
-        if (caption) {
-            setWordTiming(caption, wordIndex, audioPlayer.currentTime);
-            updateCurrentCaptionDisplay(currentCaption, caption, audioPlayer.currentTime, wordTimingMode);
-            if (captionEditor) {
-                captionEditor.refresh();
-            }
-        }
     }
     
     // Update progress bar and current caption during playback
@@ -162,43 +150,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Add event listener for clicking on words in current caption
-    currentCaption.addEventListener('click', (e) => {
-        if (wordTimingMode && e.target.classList.contains('word-span')) {
-            const captionId = parseInt(e.target.dataset.captionId);
-            const wordIndex = parseInt(e.target.dataset.index);
-            
-            if (!isNaN(captionId) && !isNaN(wordIndex)) {
-                setWordTimingInCaption(captionId, wordIndex);
-            }
-        }
-    });
-
-    currentCaption.addEventListener('dblclick', (e) => {
-        if (e.target.classList.contains('word-span')) {
-            const captionId = parseInt(e.target.dataset.captionId);
-            const wordIndex = parseInt(e.target.dataset.index);
-            const caption = captions.find(c => c.id === captionId);
-            
-            if (caption) {
-                const currentTime = caption.wordTimings[wordIndex]?.time || audioPlayer.currentTime;
-                showWordTimeEditor(
-                    document.querySelector('.audio-player'), 
-                    captionId, 
-                    wordIndex, 
-                    currentTime,
-                    (captionId, wordIndex, time) => {
-                        const caption = captions.find(c => c.id === captionId);
-                        if (caption) {
-                            setWordTiming(caption, wordIndex, time);
-                            updateCurrentCaptionDisplay(currentCaption, caption, audioPlayer.currentTime, wordTimingMode);
-                        }
-                    }
-                );
-            }
-        }
-    });
-
     // Toggle word timing mode
     wordTimingToggle.addEventListener('change', function() {
         wordTimingMode = this.checked;
@@ -234,39 +185,68 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // If there are more words to time
                 if (nextWordIndex < words.length) {
+                    // Assuming setWordTimingInCaption function is defined elsewhere in the code
+                    // If not, you'll need to define it or adjust this part according to your needs
                     setWordTimingInCaption(activeCaption.id, nextWordIndex);
                 }
             }
         }
     });
     
+    // Add event delegation for word time editing
+    currentCaption.addEventListener('dblclick', (e) => {
+        if (e.target.classList.contains('word-span')) {
+            const captionId = parseInt(e.target.dataset.captionId);
+            const wordIndex = parseInt(e.target.dataset.index);
+            const caption = captions.find(c => c.id === captionId);
+            
+            if (caption) {
+                const currentTime = caption.wordTimings[wordIndex]?.time || audioPlayer.currentTime;
+                showWordTimeEditor(
+                    document.querySelector('.audio-player'), 
+                    captionId, 
+                    wordIndex, 
+                    currentTime,
+                    (captionId, wordIndex, time) => {
+                        const caption = captions.find(c => c.id === captionId);
+                        if (caption) {
+                            setWordTiming(caption, wordIndex, time);
+                            updateCurrentCaptionDisplay(currentCaption, caption, audioPlayer.currentTime, wordTimingMode);
+                        }
+                    }
+                );
+            }
+        }
+    });
+
     // Play/Pause button
-    playPauseBtn.addEventListener('click', () => {
+    playPauseBtn.addEventListener('click', togglePlayPause);
+    
+    // Fixed position pause button
+    fixedPauseBtn.addEventListener('click', togglePlayPause);
+    
+    // Function to toggle play/pause state
+    function togglePlayPause() {
         if (audioPlayer.paused) {
             audioPlayer.play();
+            fixedPauseBtn.classList.remove('paused');
+            fixedPauseBtn.classList.add('playing');
         } else {
             audioPlayer.pause();
+            fixedPauseBtn.classList.remove('playing');
+            fixedPauseBtn.classList.add('paused');
         }
-    });
+    }
     
-    // Fixed Play/Pause button
-    fixedPlayPauseBtn.addEventListener('click', () => {
-        if (audioPlayer.paused) {
-            audioPlayer.play();
-            fixedPlayPauseBtn.textContent = "⏸️";
-        } else {
-            audioPlayer.pause();
-            fixedPlayPauseBtn.textContent = "▶️";
-        }
-    });
-    
-    // Update fixed button icon when playback state changes
+    // Update fixed button state when audio player state changes
     audioPlayer.addEventListener('play', () => {
-        fixedPlayPauseBtn.textContent = "⏸️";
+        fixedPauseBtn.classList.remove('paused');
+        fixedPauseBtn.classList.add('playing');
     });
     
     audioPlayer.addEventListener('pause', () => {
-        fixedPlayPauseBtn.textContent = "▶️";
+        fixedPauseBtn.classList.remove('playing');
+        fixedPauseBtn.classList.add('paused');
     });
     
     // Mark current time
@@ -296,11 +276,9 @@ document.addEventListener('DOMContentLoaded', () => {
         audioPlayer.currentTime = pos * audioPlayer.duration;
     });
     
-    let captionEditor = null;
     // Initialize the caption editor panel
     function initializeCaptionEditor() {
         const editor = createCaptionEditor(captions, refreshAllViews);
-        captionEditor = editor;
         
         captionEditorPanel.innerHTML = '';
         captionEditorPanel.appendChild(editor.getElement());

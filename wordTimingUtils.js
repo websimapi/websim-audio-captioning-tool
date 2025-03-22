@@ -137,3 +137,19 @@ export function showWordTimeEditor(parentElement, captionId, wordIndex, currentT
         editor.remove();
     });
 }
+
+// Add a new utility function for 3D text creation
+export function create3DTextGeometry(text, font, size = 1, height = 0.2) {
+    const textGeo = new TextGeometry(text, {
+        font: font,
+        size: size,
+        height: height,
+        curveSegments: 12,
+        bevelEnabled: false
+    });
+    
+    textGeo.computeBoundingBox();
+    textGeo.center();
+    
+    return textGeo;
+}

@@ -6,6 +6,13 @@ export const config = {
     captionBackgroundColor: 'rgba(0, 0, 0, 0.7)',
     exportFormat: 'srt', // srt, vtt, json, lrc
     
+    // Game settings
+    initialBallSize: 2,
+    ballSpeed: 50,
+    humanCount: 20,
+    minHumanSize: 0.5,
+    maxHumanSize: 2,
+    
     // Predefined captions from the user input with word timings
     predefinedCaptions: [
         { 

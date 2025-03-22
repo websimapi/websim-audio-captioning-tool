@@ -2,22 +2,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Captioning Tool</title>
+    <title>Katamari Lyrics Game</title>
     <link rel="stylesheet" href="styles.css">
     <script type="importmap">
     {
         "imports": {
-            "config": "./config.js"
+            "config": "./config.js",
+            "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/",
+            "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
         }
     }
     </script>
 </head>
 <body>
-    <div class="container">
+    <div id="game-container">
+        <div id="loading-screen">Loading...</div>
+        <div id="lyrics-container"></div>
+    </div>
+    
+    <div id="audio-controls">
+        <audio id="audioPlayer" src="/UwU Doki Doki.wav" preload="auto"></audio>
+        <button id="startGameBtn">Start Game</button>
+    </div>
+
+    <div id="caption-tools" class="hidden">
         <h1>Audio Captioning Tool</h1>
-        
         <div class="audio-player">
-            <audio id="audioPlayer" src="/UwU Doki Doki.wav" controls></audio>
             <div class="current-caption" id="currentCaption">
                 Play to see captions
             </div>
@@ -57,9 +68,12 @@
         </div>
     </div>
     
-    <button id="fixedPlayPauseBtn" class="fixed-play-pause">⏯️</button>
+    <!-- Fixed position pause button -->
+    <button id="fixedPauseBtn" class="fixed-pause-btn playing">
+        <span class="pause-icon"></span>
+    </button>
     
-    <script type="module" src="app.js"></script>
+    <script type="module" src="game.js"></script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
