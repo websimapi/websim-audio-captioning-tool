@@ -9,14 +9,87 @@ document.addEventListener('DOMContentLoaded', () => {
     const progress = document.getElementById('progress');
     const timeMarkers = document.getElementById('timeMarkers');
     const captionsList = document.getElementById('captionsList');
+    const currentCaptionDisplay = document.getElementById('currentCaption');
     
     let captions = [];
+    let srtCaptions = [];
+    
+    // Load SRT file
+    fetch('/captions.srt')
+        .then(response => response.text())
+        .then(srtContent => {
+            srtCaptions = parseSRT(srtContent);
+            updateTimeline();
+        })
+        .catch(error => {
+            console.error('Error loading SRT file:', error);
+        });
+    
+    // Parse SRT file content
+    function parseSRT(srtContent) {
+        const entries = [];
+        const blocks = srtContent.trim().split(/\n\s*\n/);
+        
+        blocks.forEach(block => {
+            const lines = block.trim().split('\n');
+            if (lines.length >= 3) {
+                // Skip the sequence number (lines[0])
+                const timeCode = lines[1];
+                const [startTime, endTime] = parseTimeCode(timeCode);
+                
+                // Combine remaining lines as the caption text
+                const textLines = lines.slice(2);
+                const text = textLines.join('\n');
+                
+                entries.push({
+                    id: Date.now() + Math.random(),
+                    startTime,
+                    endTime,
+                    text
+                });
+            }
+        });
+        
+        return entries;
+    }
+    
+    // Parse SRT time code (00:00:00,000 --> 00:00:00,000)
+    function parseTimeCode(timeCode) {
+        const [start, end] = timeCode.split(' --> ');
+        return [convertSRTTimeToSeconds(start), convertSRTTimeToSeconds(end)];
+    }
+    
+    // Convert SRT time format to seconds
+    function convertSRTTimeToSeconds(timeString) {
+        const [time, milliseconds] = timeString.split(',');
+        const [hours, minutes, seconds] = time.split(':').map(Number);
+        
+        return hours * 3600 + minutes * 60 + seconds + (milliseconds / 1000);
+    }
     
     // Update progress bar during playback
     audioPlayer.addEventListener('timeupdate', () => {
         const percentage = (audioPlayer.currentTime / audioPlayer.duration) * 100;
         progress.style.width = `${percentage}%`;
+        
+        // Display current caption from SRT
+        displayCurrentCaption(audioPlayer.currentTime);
     });
+    
+    // Display current caption based on playback time
+    function displayCurrentCaption(currentTime) {
+        const currentCaption = srtCaptions.find(caption => 
+            currentTime >= caption.startTime && currentTime < caption.endTime
+        );
+        
+        if (currentCaption) {
+            currentCaptionDisplay.textContent = currentCaption.text;
+            currentCaptionDisplay.style.display = 'block';
+        } else {
+            currentCaptionDisplay.textContent = '';
+            currentCaptionDisplay.style.display = 'none';
+        }
+    }
     
     // Play/Pause button
     playPauseBtn.addEventListener('click', () => {
@@ -56,6 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateTimeline() {
         timeMarkers.innerHTML = '';
         
+        // Add markers for user-created captions
         captions.forEach(caption => {
             const percentage = (caption.startTime / audioPlayer.duration) * 100;
             const marker = document.createElement('div');
@@ -69,6 +143,21 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             timeMarkers.appendChild(marker);
+        });
+        
+        // Add markers for SRT captions
+        srtCaptions.forEach(caption => {
+            const startPercentage = (caption.startTime / audioPlayer.duration) * 100;
+            const startMarker = document.createElement('div');
+            startMarker.className = 'time-marker srt-marker';
+            startMarker.style.left = `${startPercentage}%`;
+            startMarker.setAttribute('data-time', caption.startTime);
+            
+            startMarker.addEventListener('click', () => {
+                audioPlayer.currentTime = caption.startTime;
+            });
+            
+            timeMarkers.appendChild(startMarker);
         });
     }
     
@@ -182,4 +271,3 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTimeline();
     });
 });
-

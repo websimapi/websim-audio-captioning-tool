@@ -93,6 +93,10 @@ button:hover {
     cursor: pointer;
 }
 
+.srt-marker {
+    background-color: #27ae60;
+}
+
 .caption-item {
     background-color: #fff;
     padding: 15px;
@@ -147,3 +151,20 @@ textarea {
     background-color: #c0392b;
 }
 
+#currentCaption {
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    text-align: center;
+    font-size: 18px;
+    margin: 10px 0;
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.current-caption-container {
+    margin: 20px 0;
+}
