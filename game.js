@@ -157,7 +157,7 @@ function startGame() {
 }
 
 function update() {
-    if (gameStarted) {
+    if (gameStarted && ballBody) {  
         // Update physics
         world.step(timeStep);
         

@@ -108,6 +108,9 @@ export function createHumans(scene, world, humans, humanBodies) {
 }
 
 export function updateBallMovement(ballBody, keys) {
+    // Check if ballBody is defined before accessing its properties
+    if (!ballBody) return;
+    
     const force = 500;
     const verticalForce = 0;
     
