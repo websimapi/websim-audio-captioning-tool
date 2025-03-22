@@ -8,7 +8,7 @@ export const config = {
     
     // Game settings
     initialBallSize: 2,
-    ballSpeed: 50,
+    ballSpeed: 150,
     humanCount: 20,
     minHumanSize: 0.5,
     maxHumanSize: 2,

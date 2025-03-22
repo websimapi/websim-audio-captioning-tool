@@ -28,7 +28,7 @@ async function loadSkyboxDancer(scene) {
             'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/models/fbx/Samba%20Dancing.fbx',
             (fbx) => {
                 const dancer = fbx;
-                dancer.scale.set(0.1, 0.1, 0.1);
+                dancer.scale.set(10, 10, 10);
                 dancer.position.set(0, 0, -200);
                 dancer.traverse(child => {
                     if (child.isMesh) {

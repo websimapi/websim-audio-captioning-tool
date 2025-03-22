@@ -205,14 +205,17 @@ function update() {
         
         // Update lyrics display
         updateLyrics(audioPlayer.currentTime, config.predefinedCaptions, currentCaption, activeWords, lyricsContainer, scene, ball);
+        
+        // Update dancer position to keep in view
+        updateDancerPosition();
     }
     
     // Update camera to follow the ball
     if (ball) {
-        const cameraDistance = 20;
+        const cameraDistance = 40; 
         camera.position.x = ball.position.x + Math.sin(cameraRotation) * cameraDistance;
         camera.position.z = ball.position.z + Math.cos(cameraRotation) * cameraDistance;
-        camera.position.y = ball.position.y + 15;
+        camera.position.y = ball.position.y + 25; 
         camera.lookAt(ball.position);
     }
     
@@ -227,6 +230,22 @@ function update() {
     
     // Request next frame
     requestAnimationFrame(update);
+}
+
+function updateDancerPosition() {
+    if (skyboxDancer && camera) {
+        // Position dancer always in view of camera
+        const cameraDirection = new THREE.Vector3();
+        camera.getWorldDirection(cameraDirection);
+        
+        // Position dancer in the distance in front of camera
+        skyboxDancer.position.copy(camera.position).add(
+            cameraDirection.multiplyScalar(200)
+        );
+        
+        // Make dancer always face the camera
+        skyboxDancer.lookAt(camera.position);
+    }
 }
 
 // Initialize game
