@@ -132,6 +132,24 @@ function togglePlayPause() {
 
 function startGame() {
     if (!gameStarted) {
+        // If we're still stuck in loading, offer simplified game
+        if (loadingScreen.style.display !== 'none') {
+            if (confirm('Game assets are still loading. Start with simplified graphics?')) {
+                // Hide loading screen and start with simplified graphics
+                loadingScreen.style.display = 'none';
+                // Create basic objects if needed
+                if (!runningHuman) {
+                    const geometry = new THREE.BoxGeometry(1, 2, 1);
+                    const material = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+                    runningHuman = new THREE.Mesh(geometry, material);
+                    runningHuman.position.set(10, 1, 10);
+                    scene.add(runningHuman);
+                }
+            } else {
+                return; // User chose to wait
+            }
+        }
+        
         audioPlayer.play();
         gameStarted = true;
         fixedPauseBtn.classList.remove('paused');
@@ -200,13 +218,26 @@ async function initGame() {
     initScene();
     
     // Create environment
-    createGround(scene, world);
-    createBall(scene, world, ballRadius, ballMass);
+    const { ground, groundBody } = createGround(scene, world);
+    const { ball: ballObj, ballBody: ballPhysicsBody } = createBall(scene, world, ballRadius, ballMass);
+    ball = ballObj;
+    ballBody = ballPhysicsBody;
     createHumans(scene, world, humans, humanBodies);
+    
+    // Add loading timeout
+    const loadingTimeout = setTimeout(() => {
+        loadingScreen.innerHTML = 'Loading taking too long. <button id="retryBtn">Retry</button>';
+        document.getElementById('retryBtn').addEventListener('click', () => {
+            window.location.reload();
+        });
+    }, 15000); // 15 seconds timeout
     
     try {
         // Load characters
         const { skyboxDancerObj, dancerMixerObj, runningHumanObj, runnerMixerObj } = await loadCharacters(scene);
+        
+        // Clear timeout since loading succeeded
+        clearTimeout(loadingTimeout);
         
         // Assign loaded objects
         skyboxDancer = skyboxDancerObj;
@@ -223,8 +254,12 @@ async function initGame() {
         // Start game loop
         update();
     } catch (error) {
+        clearTimeout(loadingTimeout);
         console.error("Error initializing game:", error);
-        loadingScreen.textContent = "Error loading game. Please refresh the page.";
+        loadingScreen.innerHTML = `Error loading game: ${error.message}<br><button id="retryBtn">Retry</button>`;
+        document.getElementById('retryBtn').addEventListener('click', () => {
+            window.location.reload();
+        });
     }
 }
 

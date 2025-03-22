@@ -25,7 +25,7 @@ async function loadSkyboxDancer(scene) {
     return new Promise((resolve, reject) => {
         const loader = new FBXLoader();
         loader.load(
-            'https://threejs.org/examples/models/fbx/Samba Dancing.fbx',
+            'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/models/fbx/Samba%20Dancing.fbx',
             (fbx) => {
                 const dancer = fbx;
                 dancer.scale.set(0.1, 0.1, 0.1);
@@ -52,7 +52,16 @@ async function loadSkyboxDancer(scene) {
             (xhr) => {
                 console.log((xhr.loaded / xhr.total * 100) + '% loaded (dancer)');
             },
-            reject
+            (error) => {
+                console.error("Error loading dancer model:", error);
+                // Create a placeholder instead of failing
+                const geometry = new THREE.BoxGeometry(2, 4, 2);
+                const material = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+                const dancer = new THREE.Mesh(geometry, material);
+                dancer.position.set(0, 0, -200);
+                scene.add(dancer);
+                resolve({ dancer, mixer: new THREE.AnimationMixer(dancer) });
+            }
         );
     });
 }
@@ -61,7 +70,7 @@ async function loadRunningHuman(scene) {
     return new Promise((resolve, reject) => {
         const loader = new FBXLoader();
         loader.load(
-            'https://threejs.org/examples/models/fbx/Running.fbx',
+            'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/models/fbx/Running.fbx',
             (fbx) => {
                 const runner = fbx;
                 runner.scale.set(0.05, 0.05, 0.05);
@@ -88,7 +97,16 @@ async function loadRunningHuman(scene) {
             (xhr) => {
                 console.log((xhr.loaded / xhr.total * 100) + '% loaded (runner)');
             },
-            reject
+            (error) => {
+                console.error("Error loading runner model:", error);
+                // Create a placeholder instead of failing
+                const geometry = new THREE.BoxGeometry(1, 3, 1);
+                const material = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+                const runner = new THREE.Mesh(geometry, material);
+                runner.position.set(0, 0, -20);
+                scene.add(runner);
+                resolve({ runner, mixer: new THREE.AnimationMixer(runner) });
+            }
         );
     });
 }
