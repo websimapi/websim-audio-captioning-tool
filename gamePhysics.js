@@ -47,14 +47,14 @@ export function createBall(scene, world, ballRadius, ballMass) {
     const ball = new THREE.Mesh(ballGeometry, ballMaterial);
     ball.castShadow = true;
     ball.receiveShadow = true;
-    ball.position.set(0, ballRadius, 0);
+    ball.position.set(20, ballRadius + 1, 20); 
     scene.add(ball);
     
     // CANNON.js ball
     const ballBody = new CANNON.Body({
         mass: ballMass,
         shape: new CANNON.Sphere(ballRadius),
-        position: new CANNON.Vec3(0, ballRadius, 0),
+        position: new CANNON.Vec3(20, ballRadius + 1, 20), 
         linearDamping: 0.4,
         angularDamping: 0.4
     });
