@@ -33,19 +33,50 @@ document.addEventListener('DOMContentLoaded', () => {
             updateCaptionEndTimes();
             updateTimeline();
             renderCaptions();
+            initializeLyricsDisplay();
         });
     }
     
     // Update progress bar and current caption during playback
     audioPlayer.addEventListener('timeupdate', () => {
-        const percentage = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+        const currentTime = audioPlayer.currentTime;
+        
+        // Update progress bar and current caption
+        const percentage = (currentTime / audioPlayer.duration) * 100;
         progress.style.width = `${percentage}%`;
         
         // Find and display the current caption
-        const currentTime = audioPlayer.currentTime;
         const activeCaption = captions.find(caption => 
             currentTime >= caption.startTime && currentTime < caption.endTime
         );
+        
+        // Update lyrics display
+        document.querySelectorAll('.lyrics-line').forEach(line => {
+            const startTime = parseFloat(line.dataset.startTime);
+            const endTime = parseFloat(line.dataset.endTime);
+            
+            if (currentTime >= startTime && currentTime < endTime) {
+                line.classList.add('active-line');
+                
+                // Check for word-level timing
+                const wordSpans = line.querySelectorAll('.lyrics-word');
+                wordSpans.forEach((wordSpan) => {
+                    const wordTime = parseFloat(wordSpan.dataset.time);
+                    const nextWordSpan = wordSpan.nextElementSibling?.nextElementSibling; // Skip the text node
+                    const nextWordTime = nextWordSpan ? parseFloat(nextWordSpan.dataset.time) : endTime;
+                    
+                    if (wordTime !== undefined && currentTime >= wordTime && 
+                        (nextWordTime === undefined || currentTime < nextWordTime)) {
+                        wordSpan.classList.add('active-word');
+                    } else {
+                        wordSpan.classList.remove('active-word');
+                    }
+                });
+            } else {
+                line.classList.remove('active-line');
+                line.querySelectorAll('.lyrics-word').forEach(word => word.classList.remove('active-word'));
+            }
+        });
         
         if (activeCaption) {
             updateCurrentCaptionDisplay(activeCaption, currentTime);
@@ -399,34 +430,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
     }
     
-    // Update captions export to include word timings
-    exportBtn.addEventListener('click', () => {
-        let srtContent = '';
-        let jsonContent = JSON.stringify(captions, null, 2);
-        
-        captions.forEach((caption, index) => {
-            // Format time for SRT (HH:MM:SS,mmm)
-            const startSRT = formatSRTTime(caption.startTime);
-            const endSRT = formatSRTTime(caption.endTime);
-            
-            srtContent += `${index + 1}\n`;
-            srtContent += `${startSRT} --> ${endSRT}\n`;
-            srtContent += `${caption.text}\n\n`;
-        });
-        
-        // Create and download file
-        const blob = new Blob([config.exportFormat === 'json' ? jsonContent : srtContent], 
-                             { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `captions.${config.exportFormat}`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    });
-    
     // Format time for SRT format
     function formatSRTTime(timeInSeconds) {
         const hours = Math.floor(timeInSeconds / 3600);
@@ -435,5 +438,125 @@ document.addEventListener('DOMContentLoaded', () => {
         const milliseconds = Math.floor((timeInSeconds % 1) * 1000);
         
         return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')},${String(milliseconds).padStart(3, '0')}`;
+    }
+    
+    // Update captions export to include word timings
+    exportBtn.addEventListener('click', () => {
+        let srtContent = '';
+        let vttContent = 'WEBVTT\n\n';
+        let jsonContent = JSON.stringify(captions, null, 2);
+        let lrcContent = '';
+        
+        captions.forEach((caption, index) => {
+            // Format time for SRT (HH:MM:SS,mmm)
+            const startSRT = formatSRTTime(caption.startTime);
+            const endSRT = formatSRTTime(caption.endTime);
+            
+            srtContent += `${index + 1}\n`;
+            srtContent += `${startSRT} --> ${endSRT}\n`;
+            
+            // Add word timing data as a JSON comment if available
+            if (caption.wordTimings && caption.wordTimings.length > 0) {
+                srtContent += `{WordTimings: ${JSON.stringify(caption.wordTimings)}}\n`;
+            }
+            
+            srtContent += `${caption.text}\n\n`;
+            
+            // Format for VTT
+            const startVTT = formatSRTTime(caption.startTime).replace(',', '.');
+            const endVTT = formatSRTTime(caption.endTime).replace(',', '.');
+            
+            vttContent += `${startVTT} --> ${endVTT}\n`;
+            if (caption.wordTimings && caption.wordTimings.length > 0) {
+                vttContent += `NOTE WordTimings: ${JSON.stringify(caption.wordTimings)}\n`;
+            }
+            vttContent += `${caption.text}\n\n`;
+            
+            // Format for LRC (synchronized lyrics)
+            lrcContent += `[${formatLRCTime(caption.startTime)}]${caption.text}\n`;
+            
+            // Add word-level timings to LRC if available
+            if (caption.wordTimings && caption.wordTimings.length > 0) {
+                const words = caption.text.split(' ');
+                caption.wordTimings.forEach((timing, i) => {
+                    if (timing.time !== undefined && i < words.length) {
+                        lrcContent += `[${formatLRCTime(timing.time)}](${words[i]})\n`;
+                    }
+                });
+            }
+        });
+        
+        // Create and download file based on selected format
+        let content = srtContent;
+        let extension = 'srt';
+        
+        switch(config.exportFormat) {
+            case 'vtt':
+                content = vttContent;
+                extension = 'vtt';
+                break;
+            case 'json':
+                content = jsonContent;
+                extension = 'json';
+                break;
+            case 'lrc':
+                content = lrcContent;
+                extension = 'lrc';
+                break;
+        }
+        
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `captions.${extension}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+    
+    // Format time for LRC format (MM:SS.XX)
+    function formatLRCTime(timeInSeconds) {
+        const minutes = Math.floor(timeInSeconds / 60);
+        const seconds = Math.floor(timeInSeconds % 60);
+        const hundredths = Math.floor((timeInSeconds % 1) * 100);
+        
+        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(hundredths).padStart(2, '0')}`;
+    }
+    
+    // Initialize lyrics display
+    function initializeLyricsDisplay() {
+        const lyricsDisplay = document.getElementById('lyricsDisplay');
+        
+        // Add all captions to the lyrics display
+        captions.forEach(caption => {
+            const captionDiv = document.createElement('div');
+            captionDiv.className = 'lyrics-line';
+            captionDiv.dataset.startTime = caption.startTime;
+            captionDiv.dataset.endTime = caption.endTime;
+            
+            // Split the caption text into words
+            const words = caption.text.split(' ');
+            words.forEach((word, index) => {
+                const wordSpan = document.createElement('span');
+                wordSpan.className = 'lyrics-word';
+                wordSpan.textContent = word;
+                
+                // Add word timing data if available
+                if (caption.wordTimings && caption.wordTimings[index] && caption.wordTimings[index].time !== undefined) {
+                    wordSpan.dataset.time = caption.wordTimings[index].time;
+                }
+                
+                captionDiv.appendChild(wordSpan);
+                
+                // Add space between words except for the last word
+                if (index < words.length - 1) {
+                    captionDiv.appendChild(document.createTextNode(' '));
+                }
+            });
+            
+            lyricsDisplay.appendChild(captionDiv);
+        });
     }
 });

@@ -4,7 +4,7 @@ export const config = {
     captionFontSize: '16px',
     captionColor: '#ffffff',
     captionBackgroundColor: 'rgba(0, 0, 0, 0.7)',
-    exportFormat: 'srt', // srt, vtt, json
+    exportFormat: 'srt', // srt, vtt, json, lrc
     
     // Predefined captions from the user input
     predefinedCaptions: [
