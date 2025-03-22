@@ -7,6 +7,7 @@ import {
     updateCurrentCaptionDisplay, 
     showWordTimeEditor 
 } from './wordTimingUtils.js';
+import { createCaptionEditor } from './captionEditor.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const audioPlayer = document.getElementById('audioPlayer');
@@ -19,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const captionsList = document.getElementById('captionsList');
     const currentCaption = document.getElementById('currentCaption');
     const wordTimingToggle = document.getElementById('wordTimingToggle');
+    const captionEditorPanel = document.getElementById('captionEditorPanel');
     
     // Flag to track word timing mode
     let wordTimingMode = false;
@@ -42,6 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateTimeline();
             renderCaptions();
             initializeLyricsDisplay();
+            initializeCaptionEditor();
         });
     }
     
@@ -449,6 +452,25 @@ document.addEventListener('DOMContentLoaded', () => {
             lyricsDisplay.appendChild(captionDiv);
         });
     }
+    
+    // Initialize the caption editor panel
+    function initializeCaptionEditor() {
+        const editor = createCaptionEditor(captions, () => {
+            // Update callback to refresh displays when word timings change
+            renderCaptions();
+            initializeLyricsDisplay();
+        });
+        
+        captionEditorPanel.innerHTML = '';
+        captionEditorPanel.appendChild(editor.getElement());
+    }
+    
+    // Update the renderCaptions function to also update the caption editor
+    const originalRenderCaptions = renderCaptions;
+    renderCaptions = function() {
+        originalRenderCaptions();
+        initializeCaptionEditor();
+    };
     
     // Update captions export to include word timings
     exportBtn.addEventListener('click', () => {
