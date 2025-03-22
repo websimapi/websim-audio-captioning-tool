@@ -238,9 +238,9 @@ function updateDancerPosition() {
         const cameraDirection = new THREE.Vector3();
         camera.getWorldDirection(cameraDirection);
         
-        // Position dancer in the distance in front of camera
+        // Position dancer in the distance in front of camera (much further away)
         skyboxDancer.position.copy(camera.position).add(
-            cameraDirection.multiplyScalar(200)
+            cameraDirection.multiplyScalar(400) 
         );
         
         // Make dancer always face the camera

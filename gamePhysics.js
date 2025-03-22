@@ -108,7 +108,7 @@ export function createHumans(scene, world, humans, humanBodies) {
 }
 
 export function updateBallMovement(ballBody, keys) {
-    const force = 150;
+    const force = 300;
     
     if (keys['w']) {
         ballBody.applyLocalForce(new CANNON.Vec3(0, 0, -force));
