@@ -12,32 +12,100 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentCaption = document.getElementById('currentCaption');
 
     // Speech recognition variables
-    let recognition = null;
     let isRecognitionActive = false;
     let lastRecognizedWords = [];
     let currentActiveCaptionText = '';
+    let audioContext = null;
+    let audioSource = null;
+    let audioAnalyzer = null;
+    let audioData = null;
+    let speechDetector = null;
 
-    // Check if browser supports speech recognition
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = 'en-US';
+    // Initialize audio processing
+    function initAudioProcessing() {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            audioSource = audioContext.createMediaElementSource(audioPlayer);
+            audioAnalyzer = audioContext.createAnalyser();
+            audioAnalyzer.fftSize = 2048;
+            
+            audioSource.connect(audioAnalyzer);
+            audioSource.connect(audioContext.destination);
+            
+            audioData = new Uint8Array(audioAnalyzer.frequencyBinCount);
+            
+            // Simple audio energy detector for demonstration
+            detectSpeechFromAudio();
+        }
+    }
 
-        recognition.onresult = (event) => {
-            const results = event.results;
-            for (let i = event.resultIndex; i < results.length; i++) {
-                if (results[i].isFinal) {
-                    const transcript = results[i][0].transcript.toLowerCase();
-                    lastRecognizedWords = transcript.split(/\s+/);
-                    highlightWords();
-                }
-            }
-        };
+    // Analyze audio data to detect speech patterns
+    function detectSpeechFromAudio() {
+        if (!isRecognitionActive) return;
+        
+        audioAnalyzer.getByteFrequencyData(audioData);
+        
+        // Calculate energy in voice frequency range (roughly 300Hz-3000Hz)
+        const voiceBandStart = Math.floor(300 * audioAnalyzer.frequencyBinCount / audioContext.sampleRate);
+        const voiceBandEnd = Math.floor(3000 * audioAnalyzer.frequencyBinCount / audioContext.sampleRate);
+        
+        let voiceEnergy = 0;
+        for (let i = voiceBandStart; i < voiceBandEnd; i++) {
+            voiceEnergy += audioData[i];
+        }
+        voiceEnergy /= (voiceBandEnd - voiceBandStart);
+        
+        // If we detect voice energy above threshold
+        if (voiceEnergy > 40 && currentActiveCaptionText) {
+            // Simulate word detection based on audio energy
+            simulateWordRecognition(currentActiveCaptionText, voiceEnergy);
+        }
+        
+        // Continue analyzing
+        requestAnimationFrame(detectSpeechFromAudio);
+    }
 
-        recognition.onerror = (event) => {
-            console.log('Speech recognition error:', event.error);
-        };
+    // Simulate word recognition based on audio energy and timing
+    function simulateWordRecognition(captionText, energy) {
+        if (!captionText) return;
+        
+        const words = captionText.toLowerCase().split(/\s+/);
+        
+        // Use current time to determine which word might be spoken
+        const captionDuration = getActiveCaptionDuration();
+        if (!captionDuration) return;
+        
+        const currentCaption = getActiveCaption();
+        if (!currentCaption) return;
+        
+        const timeIntoCaption = audioPlayer.currentTime - currentCaption.startTime;
+        const percentComplete = timeIntoCaption / captionDuration;
+        
+        // Estimate which word is being spoken based on time into caption
+        const estimatedWordIndex = Math.floor(percentComplete * words.length);
+        
+        if (estimatedWordIndex >= 0 && estimatedWordIndex < words.length) {
+            // Update recognized words
+            lastRecognizedWords = [words[estimatedWordIndex]];
+            highlightWords();
+        }
+    }
+
+    // Get current active caption
+    function getActiveCaption() {
+        const currentTime = audioPlayer.currentTime;
+        return captions.find(caption => 
+            currentTime >= caption.startTime && currentTime < caption.endTime
+        );
+    }
+
+    // Calculate duration of active caption
+    function getActiveCaptionDuration() {
+        const activeCaption = getActiveCaption();
+        if (activeCaption) {
+            return activeCaption.endTime - activeCaption.startTime;
+        }
+        return null;
     }
 
     // Initialize with predefined captions if available
@@ -93,56 +161,44 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Play/Pause button with speech recognition control
+    // Play/Pause button with audio processing
     playPauseBtn.addEventListener('click', () => {
         if (audioPlayer.paused) {
             audioPlayer.play();
-            // Start speech recognition if supported
-            startSpeechRecognition();
+            // Initialize audio context on first play (browsers require user interaction)
+            initAudioProcessing();
+            startSpeechProcessing();
         } else {
             audioPlayer.pause();
-            // Stop speech recognition if active
-            stopSpeechRecognition();
+            stopSpeechProcessing();
         }
     });
 
-    // Audio events to manage speech recognition
+    // Audio events to manage speech processing
     audioPlayer.addEventListener('play', () => {
-        startSpeechRecognition();
+        // Resume audio context if suspended
+        if (audioContext && audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
+        startSpeechProcessing();
     });
 
     audioPlayer.addEventListener('pause', () => {
-        stopSpeechRecognition();
+        stopSpeechProcessing();
     });
 
     audioPlayer.addEventListener('ended', () => {
-        stopSpeechRecognition();
+        stopSpeechProcessing();
     });
 
-    // Start speech recognition
-    function startSpeechRecognition() {
-        if (recognition && !isRecognitionActive) {
-            try {
-                recognition.start();
-                isRecognitionActive = true;
-                console.log('Speech recognition started');
-            } catch (e) {
-                console.error('Error starting speech recognition:', e);
-            }
-        }
+    // Start speech processing from audio
+    function startSpeechProcessing() {
+        isRecognitionActive = true;
     }
 
-    // Stop speech recognition
-    function stopSpeechRecognition() {
-        if (recognition && isRecognitionActive) {
-            try {
-                recognition.stop();
-                isRecognitionActive = false;
-                console.log('Speech recognition stopped');
-            } catch (e) {
-                console.error('Error stopping speech recognition:', e);
-            }
-        }
+    // Stop speech processing
+    function stopSpeechProcessing() {
+        isRecognitionActive = false;
     }
 
     // Highlight words in current caption based on speech recognition
@@ -157,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!text) return;
 
         // If no speech recognition or no recognized words, just show the text
-        if (!recognition || lastRecognizedWords.length === 0) {
+        if (!lastRecognizedWords || lastRecognizedWords.length === 0) {
             currentCaption.textContent = text;
             return;
         }
