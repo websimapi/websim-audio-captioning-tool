@@ -296,6 +296,9 @@ async function initGame() {
     ball = ballObj;
     ballBody = ballPhysicsBody;
     
+    // Apply initial downward force to ensure ball starts on ground
+    ballBody.applyLocalForce(new CANNON.Vec3(0, -2000, 0));
+    
     // Add loading timeout
     const loadingTimeout = setTimeout(() => {
         loadingScreen.innerHTML = 'Loading taking too long. <button id="retryBtn">Retry</button>';

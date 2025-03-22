@@ -8,7 +8,7 @@ export const timeStep = 1/60;
 // Initialize physics world
 export function initPhysics() {
     world = new CANNON.World({
-        gravity: new CANNON.Vec3(0, -9.82, 0)
+        gravity: new CANNON.Vec3(0, -30, 0)
     });
 }
 
@@ -55,8 +55,8 @@ export function createBall(scene, world, ballRadius, ballMass) {
         mass: ballMass,
         shape: new CANNON.Sphere(ballRadius),
         position: new CANNON.Vec3(20, ballRadius + 1, 20), 
-        linearDamping: 0.4,
-        angularDamping: 0.4
+        linearDamping: 0.7,
+        angularDamping: 0.7
     });
     world.addBody(ballBody);
     
@@ -108,19 +108,36 @@ export function createHumans(scene, world, humans, humanBodies) {
 }
 
 export function updateBallMovement(ballBody, keys) {
-    const force = 1500;
+    const force = 500;
+    const verticalForce = 0;
     
     if (keys['w']) {
-        ballBody.applyLocalForce(new CANNON.Vec3(0, 0, -force));
+        ballBody.applyLocalForce(new CANNON.Vec3(0, verticalForce, -force));
     }
     if (keys['s']) {
-        ballBody.applyLocalForce(new CANNON.Vec3(0, 0, force));
+        ballBody.applyLocalForce(new CANNON.Vec3(0, verticalForce, force));
     }
     if (keys['a']) {
-        ballBody.applyLocalForce(new CANNON.Vec3(-force, 0, 0));
+        ballBody.applyLocalForce(new CANNON.Vec3(-force, verticalForce, 0));
     }
     if (keys['d']) {
-        ballBody.applyLocalForce(new CANNON.Vec3(force, 0, 0));
+        ballBody.applyLocalForce(new CANNON.Vec3(force, verticalForce, 0));
+    }
+    
+    // Limit maximum velocity to prevent extreme speeds
+    const maxSpeed = 20;
+    const velocity = ballBody.velocity;
+    const currentSpeed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+    
+    if (currentSpeed > maxSpeed) {
+        const ratio = maxSpeed / currentSpeed;
+        ballBody.velocity.x *= ratio;
+        ballBody.velocity.z *= ratio;
+    }
+    
+    // Keep ball close to ground
+    if (ballBody.position.y > ballBody.shape.radius * 2) {
+        ballBody.velocity.y = Math.min(ballBody.velocity.y, 0);
     }
 }
 
@@ -188,8 +205,8 @@ export function attachHumanToBall(human, ball, ballRadius, scene, attachedObject
         mass: ballMass += human.size,
         shape: new CANNON.Sphere(ballRadius),
         position: new CANNON.Vec3(ball.position.x, ball.position.y, ball.position.z),
-        linearDamping: 0.4,
-        angularDamping: 0.4
+        linearDamping: 0.7,
+        angularDamping: 0.7
     });
     world.addBody(newBallBody);
     
