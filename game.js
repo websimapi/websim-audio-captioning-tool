@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { world, timeStep, initPhysics, createGround, createBall, createHumans } from './gamePhysics.js';
+import { world, timeStep, initPhysics, createBall, createHumans, createInfiniteGround } from './gamePhysics.js';
 import { loadCharacters } from './gameAssets.js';
 import { config } from './config.js';
 import { updateBallMovement, checkCollisions, attachHumanToBall, createAttachmentEffect } from './gamePhysics.js';
@@ -10,6 +10,7 @@ import { updateLyrics, updateLyricsDisplay, create3DWord } from './gameLyrics.js
 // Game variables
 let scene, camera, renderer;
 let ball, ballBody, ground, groundBody;
+let terrainSystem; 
 let humans = [], humanBodies = [];
 let skyboxDancer, dancerMixer;
 let runningHuman, runnerMixer;
@@ -188,6 +189,11 @@ function update() {
             }
         });
         
+        // Update terrain chunks based on player position
+        if (terrainSystem && ball) {
+            terrainSystem.updateChunks(ball.position);
+        }
+        
         // Check for collisions
         checkCollisions(ball, humans, ballRadius, scene, attachedObjects, ballBody, world, ballMass, score);
         
@@ -228,8 +234,8 @@ async function initGame() {
     // Initialize scene
     initScene();
     
-    // Create environment
-    const { ground, groundBody } = createGround(scene, world);
+    // Create environment with infinite terrain instead of single ground
+    terrainSystem = createInfiniteGround(scene, world);
     const { ball: ballObj, ballBody: ballPhysicsBody } = createBall(scene, world, ballRadius, ballMass);
     ball = ballObj;
     ballBody = ballPhysicsBody;
@@ -280,5 +286,5 @@ window.addEventListener('DOMContentLoaded', initGame);
 // Export game objects for other modules
 export { 
     scene, camera, renderer, ball, ballBody, humans, humanBodies, 
-    skyboxDancer, dancerMixer, runningHuman, runnerMixer, attachedObjects
+    skyboxDancer, dancerMixer, runningHuman, runnerMixer, attachedObjects, terrainSystem
 };

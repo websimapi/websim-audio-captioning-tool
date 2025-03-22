@@ -231,3 +231,64 @@ export function createAttachmentEffect(position, scene) {
         material.dispose();
     }, 1000);
 }
+
+// Add new terrain chunk system
+export function createInfiniteGround(scene, world, chunkSize = 100, renderDistance = 3) {
+    const groundChunks = new Map(); // Store chunks by their coordinates
+    
+    // Create initial ground material
+    const groundMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xFFD6E0,
+        roughness: 0.7,
+        metalness: 0.1
+    });
+    
+    // Function to create a new chunk at specified coordinates
+    function createChunk(x, z) {
+        const chunkKey = `${x},${z}`;
+        
+        // Skip if chunk already exists
+        if (groundChunks.has(chunkKey)) return;
+        
+        // Three.js ground
+        const groundGeometry = new THREE.PlaneGeometry(chunkSize, chunkSize);
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.set(x * chunkSize, 0, z * chunkSize);
+        ground.receiveShadow = true;
+        scene.add(ground);
+        
+        // CANNON.js ground (invisible physics plane)
+        const groundBody = new CANNON.Body({
+            type: CANNON.Body.STATIC,
+            shape: new CANNON.Plane()
+        });
+        groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+        groundBody.position.set(x * chunkSize, 0, z * chunkSize);
+        world.addBody(groundBody);
+        
+        // Store the chunk
+        groundChunks.set(chunkKey, { ground, groundBody });
+    }
+    
+    // Function to update chunks based on player position
+    function updateChunks(playerPos) {
+        const chunkX = Math.floor(playerPos.x / chunkSize);
+        const chunkZ = Math.floor(playerPos.z / chunkSize);
+        
+        // Create chunks in render distance
+        for (let x = chunkX - renderDistance; x <= chunkX + renderDistance; x++) {
+            for (let z = chunkZ - renderDistance; z <= chunkZ + renderDistance; z++) {
+                createChunk(x, z);
+            }
+        }
+        
+        // Optional: remove far chunks to save memory
+        // This can be implemented if necessary
+    }
+    
+    // Create initial chunks around origin
+    createChunk(0, 0);
+    
+    return { updateChunks };
+}

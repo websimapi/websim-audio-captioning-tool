@@ -10,16 +10,32 @@ export function updateRunningHuman(runningHuman, runnerMixer, timeStep, ball) {
     const directionVector = new THREE.Vector3();
     directionVector.subVectors(runningHuman.position, ball.position).normalize();
     
-    runningHuman.position.x += directionVector.x * 0.2;
-    runningHuman.position.z += directionVector.z * 0.2;
-    
-    // Keep the running human a certain distance from the ball
-    const minDistance = 10;
-    const maxDistance = 30;
-    
+    // Calculate distance from ball
     const distance = runningHuman.position.distanceTo(ball.position);
     
-    if (distance > maxDistance) {
+    // Speed increases as ball gets closer
+    const baseSpeed = 0.1; // Slow base speed
+    const maxSpeed = 0.8;  // Fast max speed
+    const minDistance = 5; // Distance at which max speed is reached
+    const maxDistance = 30; // Distance at which min speed is used
+    
+    // Calculate speed based on distance (inverse relationship)
+    let speed = baseSpeed;
+    if (distance < maxDistance) {
+        // Linear interpolation between min and max speed based on distance
+        const distanceFactor = Math.max(0, (distance - minDistance) / (maxDistance - minDistance));
+        speed = maxSpeed - (maxSpeed - baseSpeed) * distanceFactor;
+    }
+    
+    // Move the human
+    runningHuman.position.x += directionVector.x * speed;
+    runningHuman.position.z += directionVector.z * speed;
+    
+    // Keep the running human a certain distance from the ball
+    const minRunDistance = 5;
+    const maxRunDistance = 40;
+    
+    if (distance > maxRunDistance) {
         // If too far, move closer to the ball
         runningHuman.position.lerp(ball.position, 0.01);
     }
