@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { world, timeStep, initPhysics, createBall, createHumans, createInfiniteGround } from './gamePhysics.js';
+import { world, timeStep, initPhysics, createHumans, createInfiniteGround } from './gamePhysics.js';
 import { loadCharacters } from './gameAssets.js';
 import { config } from './config.js';
 import { updateBallMovement, checkCollisions, attachHumanToBall, createAttachmentEffect } from './gamePhysics.js';
