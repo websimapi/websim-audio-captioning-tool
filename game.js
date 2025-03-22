@@ -19,6 +19,7 @@ let attachedObjects = [];
 let ballRadius = 2;
 let ballMass = 10;
 let gameStarted = false;
+let cameraRotation = 0;
 
 // Audio and lyrics variables
 const audioPlayer = document.getElementById('audioPlayer');
@@ -167,6 +168,14 @@ function update() {
         // Update player movement
         updateBallMovement(ballBody, keys);
         
+        // Handle camera rotation with arrow keys
+        if (keys['ArrowLeft']) {
+            cameraRotation += 0.02;
+        }
+        if (keys['ArrowRight']) {
+            cameraRotation -= 0.02;
+        }
+        
         // Update ball position from physics
         ball.position.copy(ballBody.position);
         ball.quaternion.copy(ballBody.quaternion);
@@ -194,8 +203,10 @@ function update() {
     
     // Update camera to follow the ball
     if (ball) {
-        camera.position.x = ball.position.x + 15;
-        camera.position.z = ball.position.z + 15;
+        const cameraDistance = 20;
+        camera.position.x = ball.position.x + Math.sin(cameraRotation) * cameraDistance;
+        camera.position.z = ball.position.z + Math.cos(cameraRotation) * cameraDistance;
+        camera.position.y = ball.position.y + 15;
         camera.lookAt(ball.position);
     }
     
@@ -223,10 +234,6 @@ async function initGame() {
     ball = ballObj;
     ballBody = ballPhysicsBody;
     createHumans(scene, world, humans, humanBodies);
-    
-    // Show lyrics container
-    lyricsContainer.style.display = 'block'; // Make sure it's visible
-    lyricsContainer.style.pointerEvents = 'none'; // Prevent interaction
     
     // Add loading timeout
     const loadingTimeout = setTimeout(() => {

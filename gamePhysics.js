@@ -110,16 +110,16 @@ export function createHumans(scene, world, humans, humanBodies) {
 export function updateBallMovement(ballBody, keys) {
     const force = 50;
     
-    if (keys['ArrowUp'] || keys['w']) {
+    if (keys['w']) {
         ballBody.applyLocalForce(new CANNON.Vec3(0, 0, -force));
     }
-    if (keys['ArrowDown'] || keys['s']) {
+    if (keys['s']) {
         ballBody.applyLocalForce(new CANNON.Vec3(0, 0, force));
     }
-    if (keys['ArrowLeft'] || keys['a']) {
+    if (keys['a']) {
         ballBody.applyLocalForce(new CANNON.Vec3(-force, 0, 0));
     }
-    if (keys['ArrowRight'] || keys['d']) {
+    if (keys['d']) {
         ballBody.applyLocalForce(new CANNON.Vec3(force, 0, 0));
     }
 }
