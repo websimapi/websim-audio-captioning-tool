@@ -377,7 +377,7 @@ async function initGame() {
         }
         
         // Add loading timeout
-        const loadingTimeout = setTimeout(() => {
+        let loadingTimeout = setTimeout(() => {
             loadingScreen.innerHTML = 'Loading taking too long. <button id="retryBtn">Retry</button>';
             document.getElementById('retryBtn').addEventListener('click', () => {
                 window.location.reload();
