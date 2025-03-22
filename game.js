@@ -13,7 +13,6 @@ let ball, ballBody, ground, groundBody;
 let terrainSystem; 
 let humans = [], humanBodies = [];
 let skyboxDancer, dancerMixer;
-let runningHuman, runnerMixer;
 let controls;
 let keys = {};
 let attachedObjects = [];
@@ -197,9 +196,6 @@ function update() {
         // Update attached objects
         updateAttachedObjects(attachedObjects, ball);
         
-        // Update running human
-        updateRunningHuman(runningHuman, runnerMixer, timeStep, ball);
-        
         // Update lyrics display
         updateLyrics(audioPlayer.currentTime, config.predefinedCaptions, currentCaption, activeWords, lyricsContainer, scene, ball);
         
@@ -209,8 +205,8 @@ function update() {
     
     // Update camera to follow the ball
     if (ball) {
-        const cameraDistance = 70; 
-        const cameraHeight = 40;   
+        const cameraDistance = 100; 
+        const cameraHeight = 60;   
         camera.position.x = ball.position.x + Math.sin(cameraRotation) * cameraDistance;
         camera.position.z = ball.position.z + Math.cos(cameraRotation) * cameraDistance;
         camera.position.y = ball.position.y + cameraHeight; 
@@ -287,8 +283,8 @@ async function initGame() {
     }, 15000); // 15 seconds timeout
     
     try {
-        // Load characters
-        const { skyboxDancerObj, dancerMixerObj, runningHumanObj, runnerMixerObj } = await loadCharacters(scene);
+        // Load only the dancer character, skipping the running human
+        const { skyboxDancerObj, dancerMixerObj } = await loadCharacters(scene);
         
         // Clear timeout since loading succeeded
         clearTimeout(loadingTimeout);
@@ -296,8 +292,6 @@ async function initGame() {
         // Assign loaded objects
         skyboxDancer = skyboxDancerObj;
         dancerMixer = dancerMixerObj;
-        runningHuman = runningHumanObj;
-        runnerMixer = runnerMixerObj;
         
         // Hide loading screen when all assets are loaded
         loadingScreen.style.display = 'none';
@@ -323,5 +317,5 @@ window.addEventListener('DOMContentLoaded', initGame);
 // Export game objects for other modules
 export { 
     scene, camera, renderer, ball, ballBody, humans, humanBodies, 
-    skyboxDancer, dancerMixer, runningHuman, runnerMixer, attachedObjects, terrainSystem
+    skyboxDancer, dancerMixer, controls, attachedObjects, terrainSystem
 };

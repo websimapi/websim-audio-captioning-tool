@@ -108,7 +108,7 @@ export function createHumans(scene, world, humans, humanBodies) {
 }
 
 export function updateBallMovement(ballBody, keys) {
-    const force = 600;
+    const force = 1500;
     
     if (keys['w']) {
         ballBody.applyLocalForce(new CANNON.Vec3(0, 0, -force));
@@ -233,7 +233,7 @@ export function createAttachmentEffect(position, scene) {
 }
 
 // Add new terrain chunk system
-export function createInfiniteGround(scene, world, chunkSize = 100, renderDistance = 3) {
+export function createInfiniteGround(scene, world, chunkSize = 100, renderDistance = 4) {
     const groundChunks = new Map(); // Store chunks by their coordinates
     
     // Create more colorful ground materials
@@ -255,32 +255,25 @@ export function createInfiniteGround(scene, world, chunkSize = 100, renderDistan
         const materialIndex = Math.abs(x % 2) + Math.abs(z % 2) * 2;
         const material = groundMaterials[materialIndex];
         
-        // Three.js ground with flat terrain
-        const groundGeometry = new THREE.PlaneGeometry(chunkSize, chunkSize);
+        // Create a single ground plane per chunk
+        const groundGeometry = new THREE.PlaneGeometry(chunkSize, chunkSize, 1, 1);
         const ground = new THREE.Mesh(groundGeometry, material);
         ground.rotation.x = -Math.PI / 2;
         ground.position.set(x * chunkSize, 0, z * chunkSize);
         ground.receiveShadow = true;
         scene.add(ground);
         
-        // CANNON.js ground (flat for physics simplicity)
+        // Create a flat physics body for each chunk
+        const groundShape = new CANNON.Box(new CANNON.Vec3(chunkSize/2, 0.1, chunkSize/2));
         const groundBody = new CANNON.Body({
             type: CANNON.Body.STATIC,
-            shape: new CANNON.Plane()
+            shape: groundShape
         });
-        groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-        groundBody.position.set(x * chunkSize, 0, z * chunkSize);
+        groundBody.position.set(x * chunkSize, -0.1, z * chunkSize);
         world.addBody(groundBody);
         
         // Store the chunk
         groundChunks.set(chunkKey, { ground, groundBody });
-        
-        // No decorative elements added to keep terrain simple
-    }
-    
-    // Function to add decorative elements - now empty
-    function addTerrainDecorations(scene, x, z, chunkSize) {
-        // Removed all decoration spawning
     }
     
     // Function to update chunks based on player position
@@ -295,7 +288,7 @@ export function createInfiniteGround(scene, world, chunkSize = 100, renderDistan
             }
         }
         
-        // Optional: Remove far chunks to save memory
+        // Remove far chunks to save memory
         for (const [key, chunk] of groundChunks.entries()) {
             const [chunkX, chunkZ] = key.split(',').map(Number);
             const distance = Math.max(
@@ -312,7 +305,11 @@ export function createInfiniteGround(scene, world, chunkSize = 100, renderDistan
     }
     
     // Create initial chunks around origin
-    createChunk(0, 0);
+    for (let x = -renderDistance; x <= renderDistance; x++) {
+        for (let z = -renderDistance; z <= renderDistance; z++) {
+            createChunk(x, z);
+        }
+    }
     
     return { updateChunks };
 }

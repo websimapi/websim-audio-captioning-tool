@@ -3,17 +3,12 @@ import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 
 export async function loadCharacters(scene) {
     try {
-        // Load both characters concurrently
-        const [skyboxDancerData, runningHumanData] = await Promise.all([
-            loadSkyboxDancer(scene),
-            loadRunningHuman(scene)
-        ]);
+        // Load only the dancer character
+        const skyboxDancerData = await loadSkyboxDancer(scene);
         
         return {
             skyboxDancerObj: skyboxDancerData.dancer,
-            dancerMixerObj: skyboxDancerData.mixer,
-            runningHumanObj: runningHumanData.runner,
-            runnerMixerObj: runningHumanData.mixer
+            dancerMixerObj: skyboxDancerData.mixer
         };
     } catch (error) {
         console.error("Error loading characters:", error);
