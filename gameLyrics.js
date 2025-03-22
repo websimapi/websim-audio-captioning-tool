@@ -71,7 +71,7 @@ export function updateLyricsDisplay(caption, lyricsContainer) {
         
         lyricsContainer.appendChild(wordElement);
         
-        // Add animation to make words appear with a delay
+        // Add animation to make words appear immediately with a slight delay
         setTimeout(() => {
             wordElement.style.opacity = '0.8';
             wordElement.style.transform = 'scale(1)';
