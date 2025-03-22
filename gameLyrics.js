@@ -67,8 +67,15 @@ export function updateLyricsDisplay(caption, lyricsContainer) {
         const hue = Math.floor(Math.random() * 360);
         wordElement.style.backgroundColor = `hsla(${hue}, 80%, 60%, 0.6)`;
         wordElement.style.color = `hsl(${hue}, 100%, 90%)`;
+        wordElement.style.textShadow = `0 0 5px hsla(${hue}, 100%, 70%, 1)`;
         
         lyricsContainer.appendChild(wordElement);
+        
+        // Add animation to make words appear with a delay
+        setTimeout(() => {
+            wordElement.style.opacity = '0.8';
+            wordElement.style.transform = 'scale(1)';
+        }, index * 50);
     });
 }
 

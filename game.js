@@ -1,13 +1,11 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import * as CANNON from 'cannon-es';
 import { world, timeStep, initPhysics, createBall, createHumans, createInfiniteGround } from './gamePhysics.js';
 import { loadCharacters } from './gameAssets.js';
 import { config } from './config.js';
 import { updateBallMovement, checkCollisions, attachHumanToBall, createAttachmentEffect } from './gamePhysics.js';
 import { updateRunningHuman, updateAttachedObjects } from './gameAnimation.js';
 import { updateLyrics, updateLyricsDisplay, create3DWord } from './gameLyrics.js';
-import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 
 // Game variables
 let scene, camera, renderer;
@@ -76,11 +74,17 @@ function initScene() {
 }
 
 function createSkybox() {
-    // Simply create a colored background instead of a box with walls
-    scene.background = new THREE.Color(0xA2D2FF);
-    
-    // Add some distant fog for a sense of space
-    scene.fog = new THREE.FogExp2(0xA2D2FF, 0.002);
+    const skyboxGeometry = new THREE.BoxGeometry(500, 500, 500);
+    const skyboxMaterials = [
+        new THREE.MeshBasicMaterial({ color: 0xFFD6E0, side: THREE.BackSide }), // right
+        new THREE.MeshBasicMaterial({ color: 0xFFD6E0, side: THREE.BackSide }), // left
+        new THREE.MeshBasicMaterial({ color: 0xA2D2FF, side: THREE.BackSide }), // top
+        new THREE.MeshBasicMaterial({ color: 0xC8FFD4, side: THREE.BackSide }), // bottom
+        new THREE.MeshBasicMaterial({ color: 0xB5EAEA, side: THREE.BackSide }), // front
+        new THREE.MeshBasicMaterial({ color: 0xB5EAEA, side: THREE.BackSide })  // back
+    ];
+    const skybox = new THREE.Mesh(skyboxGeometry, skyboxMaterials);
+    scene.add(skybox);
 }
 
 function setupEventListeners() {
@@ -157,7 +161,7 @@ function startGame() {
 }
 
 function update() {
-    if (gameStarted && ballBody) {  
+    if (gameStarted) {
         // Update physics
         world.step(timeStep);
         
@@ -228,8 +232,7 @@ function updateDancerPosition() {
         const cameraDirection = new THREE.Vector3();
         camera.getWorldDirection(cameraDirection);
         
-        // Position dancer 100 units in front of the camera at a fixed height
-        // to ensure it's always visible
+        // Position dancer 200 units in front of the camera at a fixed height
         const distanceFromCamera = 200;
         const fixedHeight = 20; // Fixed height to ensure visibility
         
@@ -249,6 +252,14 @@ function updateDancerPosition() {
         // Make dancer always face the camera
         skyboxDancer.lookAt(camera.position);
         
+        // Scale dancer based on distance from ball
+        if (ball) {
+            const distance = skyboxDancer.position.distanceTo(ball.position);
+            // Scale factor increases as distance increases (inverse relationship)
+            const scaleFactor = Math.min(1.0, Math.max(0.1, distance / 300));
+            skyboxDancer.scale.set(scaleFactor, scaleFactor, scaleFactor);
+        }
+        
         // Ensure the dancer is always dancing by checking animation
         if (dancerMixer && dancerMixer.clipAction) {
             const action = dancerMixer.clipAction(skyboxDancer.animations[0]);
@@ -257,33 +268,6 @@ function updateDancerPosition() {
             }
         }
     }
-}
-
-async function loadSkyboxDancer(scene) {
-    return new Promise((resolve, reject) => {
-        const loader = new FBXLoader();
-        loader.load(
-            'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/models/fbx/Samba%20Dancing.fbx',
-            (fbx) => {
-                const dancer = fbx;
-                dancer.scale.set(1, 1, 1); // 10x larger than before (was 0.1)
-                dancer.position.set(0, 0, -200);  
-                dancer.traverse(child => {
-                    if (child.isMesh) {
-                        child.castShadow = true;
-                    }
-                });
-                resolve({ skyboxDancerObj: dancer, dancerMixerObj: new THREE.AnimationMixer(dancer) });
-            },
-            (xhr) => {
-                console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
-            },
-            (error) => {
-                console.log('An error happened');
-                reject(error);
-            }
-        );
-    });
 }
 
 // Initialize game
@@ -297,9 +281,6 @@ async function initGame() {
     ball = ballObj;
     ballBody = ballPhysicsBody;
     
-    // Apply initial downward force to ensure ball starts on ground
-    ballBody.applyLocalForce(new CANNON.Vec3(0, -2000, 0));
-    
     // Add loading timeout
     const loadingTimeout = setTimeout(() => {
         loadingScreen.innerHTML = 'Loading taking too long. <button id="retryBtn">Retry</button>';
@@ -310,7 +291,7 @@ async function initGame() {
     
     try {
         // Load only the dancer character, skipping the running human
-        const { skyboxDancerObj, dancerMixerObj } = await loadSkyboxDancer(scene);
+        const { skyboxDancerObj, dancerMixerObj } = await loadCharacters(scene);
         
         // Clear timeout since loading succeeded
         clearTimeout(loadingTimeout);
@@ -318,9 +299,6 @@ async function initGame() {
         // Assign loaded objects
         skyboxDancer = skyboxDancerObj;
         dancerMixer = dancerMixerObj;
-        
-        // Add dancer to scene
-        scene.add(skyboxDancer);
         
         // Hide loading screen when all assets are loaded
         loadingScreen.style.display = 'none';

@@ -8,7 +8,7 @@ export const timeStep = 1/60;
 // Initialize physics world
 export function initPhysics() {
     world = new CANNON.World({
-        gravity: new CANNON.Vec3(0, -30, 0)
+        gravity: new CANNON.Vec3(0, -9.82, 0)
     });
 }
 
@@ -47,16 +47,16 @@ export function createBall(scene, world, ballRadius, ballMass) {
     const ball = new THREE.Mesh(ballGeometry, ballMaterial);
     ball.castShadow = true;
     ball.receiveShadow = true;
-    ball.position.set(20, ballRadius + 1, 20); 
+    ball.position.set(0, ballRadius, 0);
     scene.add(ball);
     
     // CANNON.js ball
     const ballBody = new CANNON.Body({
         mass: ballMass,
         shape: new CANNON.Sphere(ballRadius),
-        position: new CANNON.Vec3(20, ballRadius + 1, 20), 
-        linearDamping: 0.7,
-        angularDamping: 0.7
+        position: new CANNON.Vec3(0, ballRadius, 0),
+        linearDamping: 0.4,
+        angularDamping: 0.4
     });
     world.addBody(ballBody);
     
@@ -108,39 +108,19 @@ export function createHumans(scene, world, humans, humanBodies) {
 }
 
 export function updateBallMovement(ballBody, keys) {
-    // Check if ballBody is defined before accessing its properties
-    if (!ballBody) return;
-    
-    const force = 500;
-    const verticalForce = 0;
+    const force = 1500;
     
     if (keys['w']) {
-        ballBody.applyLocalForce(new CANNON.Vec3(0, verticalForce, -force));
+        ballBody.applyLocalForce(new CANNON.Vec3(0, 0, -force));
     }
     if (keys['s']) {
-        ballBody.applyLocalForce(new CANNON.Vec3(0, verticalForce, force));
+        ballBody.applyLocalForce(new CANNON.Vec3(0, 0, force));
     }
     if (keys['a']) {
-        ballBody.applyLocalForce(new CANNON.Vec3(-force, verticalForce, 0));
+        ballBody.applyLocalForce(new CANNON.Vec3(-force, 0, 0));
     }
     if (keys['d']) {
-        ballBody.applyLocalForce(new CANNON.Vec3(force, verticalForce, 0));
-    }
-    
-    // Limit maximum velocity to prevent extreme speeds
-    const maxSpeed = 20;
-    const velocity = ballBody.velocity;
-    const currentSpeed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
-    
-    if (currentSpeed > maxSpeed) {
-        const ratio = maxSpeed / currentSpeed;
-        ballBody.velocity.x *= ratio;
-        ballBody.velocity.z *= ratio;
-    }
-    
-    // Keep ball close to ground
-    if (ballBody.position.y > ballBody.shape.radius * 2) {
-        ballBody.velocity.y = Math.min(ballBody.velocity.y, 0);
+        ballBody.applyLocalForce(new CANNON.Vec3(force, 0, 0));
     }
 }
 
@@ -208,8 +188,8 @@ export function attachHumanToBall(human, ball, ballRadius, scene, attachedObject
         mass: ballMass += human.size,
         shape: new CANNON.Sphere(ballRadius),
         position: new CANNON.Vec3(ball.position.x, ball.position.y, ball.position.z),
-        linearDamping: 0.7,
-        angularDamping: 0.7
+        linearDamping: 0.4,
+        angularDamping: 0.4
     });
     world.addBody(newBallBody);
     
