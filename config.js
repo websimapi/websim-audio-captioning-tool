@@ -5,7 +5,6 @@ export const config = {
     captionColor: '#ffffff',
     captionBackgroundColor: 'rgba(0, 0, 0, 0.7)',
     exportFormat: 'srt', // srt, vtt, json
-    highlightColor: '#ffcc00', // Color for highlighted words
     
     // Predefined captions from the user input
     predefinedCaptions: [
