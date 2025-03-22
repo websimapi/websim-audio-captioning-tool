@@ -179,45 +179,59 @@ function createBall(scene, world, ballRadius, ballMass) {
     ball.position.set(0, ballRadius * 2, 0); // Higher starting position to avoid ground collision issues
     scene.add(ball);
     
-    // CANNON.js ball with better physics properties
-    const ballBody = new CANNON.Body({
-        mass: ballMass,
-        shape: new CANNON.Sphere(ballRadius),
-        position: new CANNON.Vec3(0, ballRadius * 2, 0),
-        linearDamping: 0.2, // Reduced from 0.4 for less friction
-        angularDamping: 0.2  // Reduced from 0.4
-    });
-    
-    // Add velocity cap to prevent excessive speed
-    ballBody.addEventListener('preStep', () => {
-        const maxVelocity = 30;
-        const vel = ballBody.velocity;
-        const speed = vel.length();
+    // Check if CANNON is defined before trying to use it
+    if (typeof CANNON !== 'undefined') {
+        // CANNON.js ball with better physics properties
+        const ballBody = new CANNON.Body({
+            mass: ballMass,
+            shape: new CANNON.Sphere(ballRadius),
+            position: new CANNON.Vec3(0, ballRadius * 2, 0),
+            linearDamping: 0.2, // Reduced from 0.4 for less friction
+            angularDamping: 0.2  // Reduced from 0.4
+        });
         
-        if (speed > maxVelocity) {
-            vel.scale(maxVelocity / speed, vel);
-        }
-    });
+        // Add velocity cap to prevent excessive speed
+        ballBody.addEventListener('preStep', () => {
+            const maxVelocity = 30;
+            const vel = ballBody.velocity;
+            const speed = vel.length();
+            
+            if (speed > maxVelocity) {
+                vel.scale(maxVelocity / speed, vel);
+            }
+        });
+        
+        world.addBody(ballBody);
+        
+        return { ball, ballBody };
+    }
     
-    world.addBody(ballBody);
-    
-    return { ball, ballBody };
+    // If CANNON isn't available, just return the ball with a dummy ballBody
+    return { ball, ballBody: { position: ball.position, quaternion: ball.quaternion } };
 }
 
 function update() {
     if (gameStarted) {
-        // Update physics with optimized performance
-        for (let i = 0; i < 2; i++) { // Increase physics steps for better accuracy
-            world.step(timeStep / 2);
+        // Update physics with optimized performance only if CANNON is available
+        if (typeof CANNON !== 'undefined' && world) {
+            for (let i = 0; i < 2; i++) { // Increase physics steps for better accuracy
+                world.step(timeStep / 2);
+            }
         }
         
         // Update player movement
-        updateBallMovement(ballBody, keys);
+        if (typeof CANNON !== 'undefined') {
+            updateBallMovement(ballBody, keys);
+        }
         
         // Ensure ball stays above ground
-        if (ballBody.position.y < ballRadius) {
-            ballBody.position.y = ballRadius;
-            ballBody.velocity.y = Math.max(0, ballBody.velocity.y);
+        if (ballBody && ballBody.position) {
+            if (ballBody.position.y < ballRadius) {
+                ballBody.position.y = ballRadius;
+                if (ballBody.velocity) {
+                    ballBody.velocity.y = Math.max(0, ballBody.velocity.y);
+                }
+            }
         }
         
         // Handle camera rotation with arrow keys
@@ -246,7 +260,9 @@ function update() {
         }
         
         // Check for collisions
-        checkCollisions(ball, humans, ballRadius, scene, attachedObjects, ballBody, world, ballMass, score);
+        if (typeof CANNON !== 'undefined') {
+            checkCollisions(ball, humans, ballRadius, scene, attachedObjects, ballBody, world, ballMass, score);
+        }
         
         // Update attached objects
         updateAttachedObjects(attachedObjects, ball);
@@ -349,20 +365,25 @@ async function initGame() {
     
     // Create environment with infinite terrain instead of single ground
     terrainSystem = createInfiniteGround(scene, world);
-    const { ball: ballObj, ballBody: ballPhysicsBody } = createBall(scene, world, ballRadius, ballMass);
-    ball = ballObj;
-    ballBody = ballPhysicsBody;
-    createHumans(scene, world, humans, humanBodies);
-    
-    // Add loading timeout
-    const loadingTimeout = setTimeout(() => {
-        loadingScreen.innerHTML = 'Loading taking too long. <button id="retryBtn">Retry</button>';
-        document.getElementById('retryBtn').addEventListener('click', () => {
-            window.location.reload();
-        });
-    }, 15000); // 15 seconds timeout
     
     try {
+        const { ball: ballObj, ballBody: ballPhysicsBody } = createBall(scene, world, ballRadius, ballMass);
+        ball = ballObj;
+        ballBody = ballPhysicsBody;
+        
+        // Only create humans if we have physics working
+        if (typeof CANNON !== 'undefined') {
+            createHumans(scene, world, humans, humanBodies);
+        }
+        
+        // Add loading timeout
+        const loadingTimeout = setTimeout(() => {
+            loadingScreen.innerHTML = 'Loading taking too long. <button id="retryBtn">Retry</button>';
+            document.getElementById('retryBtn').addEventListener('click', () => {
+                window.location.reload();
+            });
+        }, 15000); // 15 seconds timeout
+        
         // Load characters
         const { skyboxDancerObj, dancerMixerObj, runningHumanObj, runnerMixerObj } = await loadCharacters(scene);
         
