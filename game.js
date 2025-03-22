@@ -141,7 +141,15 @@ function update() {
         
         // Update lyrics display
         if (audioPlayer && !audioPlayer.paused) {
-            updateLyrics(audioPlayer.currentTime, config.predefinedCaptions, null, [], lyricsContainer, scene, skyboxDancer);
+            const { currentCaption, activeWords } = updateLyrics(
+                audioPlayer.currentTime, 
+                config.predefinedCaptions, 
+                null, 
+                [], 
+                lyricsContainer, 
+                scene, 
+                skyboxDancer
+            );
         }
         
         // Position dancer in the center
