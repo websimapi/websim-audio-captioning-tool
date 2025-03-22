@@ -10,10 +10,19 @@ export function createCaptionEditor(captions, updateCallback) {
         const listContainer = document.createElement('div');
         listContainer.className = 'caption-list-container';
         
-        captions.forEach((caption, index) => {
-            const editorElement = createSingleCaptionEditor(caption, index);
-            listContainer.appendChild(editorElement);
-        });
+        // Check if captions array is valid and has items
+        if (captions && captions.length > 0) {
+            captions.forEach((caption, index) => {
+                const editorElement = createSingleCaptionEditor(caption, index);
+                listContainer.appendChild(editorElement);
+            });
+        } else {
+            // Show a message if no captions are available
+            const noDataMsg = document.createElement('div');
+            noDataMsg.textContent = 'No caption data available';
+            noDataMsg.className = 'no-data-message';
+            listContainer.appendChild(noDataMsg);
+        }
         
         editorContainer.appendChild(listContainer);
     }

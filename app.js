@@ -37,15 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
             text: caption.text,
             wordTimings: caption.wordTimings || [] // Use provided word timings
         }));
-        
-        // Once loaded, render the captions
-        audioPlayer.addEventListener('loadedmetadata', () => {
-            updateCaptionEndTimes();
-            updateTimeline();
-            renderCaptions();
-            initializeLyricsDisplay();
-            initializeCaptionEditor();
-        });
     }
     
     // Update progress bar and current caption during playback
@@ -471,6 +462,15 @@ document.addEventListener('DOMContentLoaded', () => {
         originalRenderCaptions();
         initializeCaptionEditor();
     };
+    
+    // Call the initialization functions explicitly after audio loads
+    audioPlayer.addEventListener('loadedmetadata', () => {
+        updateCaptionEndTimes();
+        updateTimeline();
+        renderCaptions();
+        initializeLyricsDisplay();
+        initializeCaptionEditor(); 
+    });
     
     // Update captions export to include word timings
     exportBtn.addEventListener('click', () => {
