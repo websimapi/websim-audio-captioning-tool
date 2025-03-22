@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { formatTime } from './wordTimingUtils.js';
 
-export function updateLyrics(currentTime, predefinedCaptions, currentCaption, activeWords, lyricsContainer, scene, ball) {
+export function updateLyrics(currentTime, predefinedCaptions, currentCaption, activeWords, lyricsContainer, scene, dancer) {
     // Find the current caption
     const activeCaption = predefinedCaptions.find(caption => 
         currentTime >= caption.startTime && currentTime < caption.endTime
@@ -37,8 +37,8 @@ export function updateLyrics(currentTime, predefinedCaptions, currentCaption, ac
                 activeWords.push(index);
                 wordElement.classList.add('active');
                 
-                // Create 3D word
-                create3DWord(word, index, scene, ball);
+                // Create 3D word near dancer instead of ball
+                create3DWord(word, index, scene, dancer);
             } else if (!isActive && activeWords.includes(index)) {
                 // Word is no longer active
                 activeWords = activeWords.filter(i => i !== index);
@@ -79,7 +79,7 @@ export function updateLyricsDisplay(caption, lyricsContainer) {
     });
 }
 
-export function create3DWord(word, index, scene, ball) {
+export function create3DWord(word, index, scene, dancer) {
     // Create 3D text for the word
     const geometry = new THREE.BoxGeometry(0.2 * word.length, 0.5, 0.1);
     
@@ -93,15 +93,15 @@ export function create3DWord(word, index, scene, ball) {
     
     const textMesh = new THREE.Mesh(geometry, material);
     
-    // Position the word above the player or in view
+    // Position the word around the dancer
     const angleOffset = Math.random() * Math.PI * 2;
-    const radius = 10 + Math.random() * 5;
-    const height = 5 + Math.random() * 8;
+    const radius = 5 + Math.random() * 3;
+    const height = 3 + Math.random() * 5;
     
     textMesh.position.set(
-        ball.position.x + Math.cos(angleOffset) * radius,
-        ball.position.y + height,
-        ball.position.z + Math.sin(angleOffset) * radius
+        dancer.position.x + Math.cos(angleOffset) * radius,
+        dancer.position.y + height,
+        dancer.position.z + Math.sin(angleOffset) * radius
     );
     
     // Add to scene
