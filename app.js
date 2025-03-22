@@ -1,4 +1,12 @@
 import { config } from 'config';
+import { 
+    formatTime, 
+    formatSRTTime, 
+    formatLRCTime, 
+    setWordTiming, 
+    updateCurrentCaptionDisplay, 
+    showWordTimeEditor 
+} from './wordTimingUtils.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const audioPlayer = document.getElementById('audioPlayer');
@@ -25,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
             startTime: caption.startTime,
             endTime: caption.endTime,
             text: caption.text,
-            wordTimings: [] // Add word timings property
+            wordTimings: caption.wordTimings || [] // Use provided word timings
         }));
         
         // Once loaded, render the captions
@@ -79,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         if (activeCaption) {
-            updateCurrentCaptionDisplay(activeCaption, currentTime);
+            updateCurrentCaptionDisplay(currentCaption, activeCaption, currentTime, wordTimingMode);
             
             // Highlight the active caption in the list
             document.querySelectorAll('.caption-item').forEach(item => {
@@ -96,83 +104,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Function to update the current caption display with word highlighting
-    function updateCurrentCaptionDisplay(caption, currentTime) {
-        // Clear current content
-        currentCaption.innerHTML = '';
-        
-        if (!caption.wordTimings || caption.wordTimings.length === 0) {
-            // If no word timings, just display the text
-            currentCaption.textContent = caption.text;
-            return;
-        }
-        
-        // Split text into words if needed
-        const words = caption.text.split(' ');
-        
-        words.forEach((word, index) => {
-            const wordTiming = caption.wordTimings[index] || {};
-            const wordSpan = document.createElement('span');
-            wordSpan.className = 'word-span';
-            wordSpan.textContent = word;
-            wordSpan.dataset.index = index;
-            wordSpan.dataset.captionId = caption.id;
-            
-            // Add time display
-            const timeDisplay = document.createElement('span');
-            timeDisplay.className = 'word-time';
-            if (wordTiming.time !== undefined) {
-                timeDisplay.textContent = formatTime(wordTiming.time);
-            } else {
-                timeDisplay.textContent = '-- : --';
-            }
-            wordSpan.appendChild(timeDisplay);
-            
-            // Highlight active word
-            if (wordTiming.time !== undefined && currentTime >= wordTiming.time && 
-                (index === words.length - 1 || 
-                 !caption.wordTimings[index + 1] || 
-                 currentTime < caption.wordTimings[index + 1].time)) {
-                wordSpan.classList.add('active');
-            }
-            
-            // Add click event for word timing
-            wordSpan.addEventListener('click', (e) => {
-                if (wordTimingMode) {
-                    setWordTiming(caption.id, index);
-                }
-                e.stopPropagation();
-            });
-            
-            currentCaption.appendChild(wordSpan);
-            
-            // Add space between words except for the last word
-            if (index < words.length - 1) {
-                currentCaption.appendChild(document.createTextNode(' '));
-            }
-        });
-    }
-    
     // Function to set timing for a specific word
-    function setWordTiming(captionId, wordIndex) {
+    function setWordTimingInCaption(captionId, wordIndex) {
         const caption = captions.find(c => c.id === captionId);
         if (!caption) return;
         
-        // Initialize word timings array if needed
-        if (!caption.wordTimings) {
-            caption.wordTimings = [];
-        }
-        
-        // Ensure the array has entries for all words
-        const words = caption.text.split(' ');
-        while (caption.wordTimings.length < words.length) {
-            caption.wordTimings.push({});
-        }
-        
-        // Set the time for the selected word
-        caption.wordTimings[wordIndex] = {
-            time: audioPlayer.currentTime
-        };
+        setWordTiming(caption, wordIndex, audioPlayer.currentTime);
         
         // Update display
         const wordSpans = document.querySelectorAll('.word-span');
@@ -225,66 +162,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // If there are more words to time
                 if (nextWordIndex < words.length) {
-                    setWordTiming(activeCaption.id, nextWordIndex);
+                    setWordTimingInCaption(activeCaption.id, nextWordIndex);
                 }
             }
         }
     });
-    
-    // Function to edit word time manually
-    function showWordTimeEditor(captionId, wordIndex, currentTime) {
-        // Remove any existing editor
-        const existingEditor = document.getElementById('wordTimeEditor');
-        if (existingEditor) {
-            existingEditor.remove();
-        }
-        
-        const editor = document.createElement('div');
-        editor.id = 'wordTimeEditor';
-        editor.className = 'word-timing-controls';
-        editor.innerHTML = `
-            <div>Edit word timing:</div>
-            <input type="text" id="wordTimeInput" class="word-time-input" value="${formatTime(currentTime)}">
-            <button id="saveWordTimeBtn">Save</button>
-            <button id="cancelWordTimeBtn">Cancel</button>
-        `;
-        
-        // Insert the editor after the audio player
-        document.querySelector('.audio-player').appendChild(editor);
-        
-        // Set up event listeners
-        document.getElementById('saveWordTimeBtn').addEventListener('click', () => {
-            const timeInput = document.getElementById('wordTimeInput').value;
-            const timeComponents = timeInput.split(':');
-            let seconds = 0;
-            
-            if (timeComponents.length === 2) {
-                // MM:SS.mmm format
-                seconds = parseInt(timeComponents[0]) * 60 + parseFloat(timeComponents[1]);
-            } else if (timeComponents.length === 3) {
-                // HH:MM:SS.mmm format
-                seconds = parseInt(timeComponents[0]) * 3600 + parseInt(timeComponents[1]) * 60 + parseFloat(timeComponents[2]);
-            }
-            
-            const caption = captions.find(c => c.id === captionId);
-            if (caption && !isNaN(seconds)) {
-                // Ensure the array has entries for all words
-                const words = caption.text.split(' ');
-                while (caption.wordTimings.length < words.length) {
-                    caption.wordTimings.push({});
-                }
-                
-                caption.wordTimings[wordIndex] = { time: seconds };
-                updateCurrentCaptionDisplay(caption, audioPlayer.currentTime);
-            }
-            
-            editor.remove();
-        });
-        
-        document.getElementById('cancelWordTimeBtn').addEventListener('click', () => {
-            editor.remove();
-        });
-    }
     
     // Add event delegation for word time editing
     currentCaption.addEventListener('dblclick', (e) => {
@@ -295,7 +177,19 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (caption) {
                 const currentTime = caption.wordTimings[wordIndex]?.time || audioPlayer.currentTime;
-                showWordTimeEditor(captionId, wordIndex, currentTime);
+                showWordTimeEditor(
+                    document.querySelector('.audio-player'), 
+                    captionId, 
+                    wordIndex, 
+                    currentTime,
+                    (captionId, wordIndex, time) => {
+                        const caption = captions.find(c => c.id === captionId);
+                        if (caption) {
+                            setWordTiming(caption, wordIndex, time);
+                            updateCurrentCaptionDisplay(currentCaption, caption, audioPlayer.currentTime, wordTimingMode);
+                        }
+                    }
+                );
             }
         }
     });
@@ -317,7 +211,8 @@ document.addEventListener('DOMContentLoaded', () => {
         captions.push({
             id: Date.now(),
             startTime: time,
-            text: ''
+            text: '',
+            wordTimings: []
         });
         
         // Sort captions by time
@@ -367,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Render captions list
+    // Render captions list with word timing data
     function renderCaptions() {
         captionsList.innerHTML = '';
         
@@ -384,6 +279,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="caption-text">
                     <textarea placeholder="Enter caption here...">${caption.text}</textarea>
                 </div>
+                <div class="word-timings-container">
+                    <details>
+                        <summary>Word Timings</summary>
+                        <div class="word-timings-list"></div>
+                    </details>
+                </div>
                 <div class="caption-actions">
                     <button class="save-btn">Save</button>
                     <button class="edit-btn">Edit</button>
@@ -391,11 +292,103 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
             
+            // Populate word timings if available
+            if (caption.wordTimings && caption.wordTimings.length > 0) {
+                const wordTimingsList = captionItem.querySelector('.word-timings-list');
+                const words = caption.text.split(' ');
+                
+                words.forEach((word, idx) => {
+                    if (caption.wordTimings[idx] && caption.wordTimings[idx].time !== undefined) {
+                        const wordTimingItem = document.createElement('div');
+                        wordTimingItem.className = 'word-timing-item';
+                        wordTimingItem.innerHTML = `
+                            <span class="word-text">${word}</span>: 
+                            <span class="word-time-value">${formatTime(caption.wordTimings[idx].time)}</span>
+                            <button class="edit-word-time-btn" data-index="${idx}">Edit</button>
+                        `;
+                        wordTimingsList.appendChild(wordTimingItem);
+                        
+                        // Add edit button listener
+                        wordTimingItem.querySelector('.edit-word-time-btn').addEventListener('click', (e) => {
+                            const wordIndex = parseInt(e.target.dataset.index);
+                            const currentTime = caption.wordTimings[wordIndex].time;
+                            
+                            showWordTimeEditor(
+                                wordTimingItem,
+                                caption.id,
+                                wordIndex,
+                                currentTime,
+                                (captionId, wordIndex, time) => {
+                                    caption.wordTimings[wordIndex].time = time;
+                                    wordTimingItem.querySelector('.word-time-value').textContent = formatTime(time);
+                                }
+                            );
+                        });
+                    }
+                });
+            }
+            
             // Save caption text
             const saveBtn = captionItem.querySelector('.save-btn');
             saveBtn.addEventListener('click', () => {
                 const textarea = captionItem.querySelector('textarea');
-                caption.text = textarea.value;
+                const newText = textarea.value;
+                const oldText = caption.text;
+                caption.text = newText;
+                
+                // Update word timings if text has changed
+                if (oldText !== newText && caption.wordTimings && caption.wordTimings.length > 0) {
+                    const oldWords = oldText.split(' ');
+                    const newWords = newText.split(' ');
+                    
+                    // If word count changed, adjust the word timings array
+                    if (oldWords.length !== newWords.length) {
+                        // Keep existing timings for words that still exist
+                        const newWordTimings = [];
+                        for (let i = 0; i < Math.min(oldWords.length, newWords.length); i++) {
+                            newWordTimings[i] = caption.wordTimings[i] || {};
+                        }
+                        caption.wordTimings = newWordTimings;
+                    }
+                }
+                
+                // Refresh the word timings list
+                captionItem.querySelector('.word-timings-list').innerHTML = '';
+                if (caption.wordTimings && caption.wordTimings.length > 0) {
+                    const wordTimingsList = captionItem.querySelector('.word-timings-list');
+                    const words = caption.text.split(' ');
+                    
+                    words.forEach((word, idx) => {
+                        if (caption.wordTimings[idx] && caption.wordTimings[idx].time !== undefined) {
+                            const wordTimingItem = document.createElement('div');
+                            wordTimingItem.className = 'word-timing-item';
+                            wordTimingItem.innerHTML = `
+                                <span class="word-text">${word}</span>: 
+                                <span class="word-time-value">${formatTime(caption.wordTimings[idx].time)}</span>
+                                <button class="edit-word-time-btn" data-index="${idx}">Edit</button>
+                            `;
+                            wordTimingsList.appendChild(wordTimingItem);
+                            
+                            // Add edit button listener
+                            wordTimingItem.querySelector('.edit-word-time-btn').addEventListener('click', (e) => {
+                                const wordIndex = parseInt(e.target.dataset.index);
+                                const currentTime = caption.wordTimings[wordIndex].time;
+                                
+                                showWordTimeEditor(
+                                    wordTimingItem,
+                                    caption.id,
+                                    wordIndex,
+                                    currentTime,
+                                    (captionId, wordIndex, time) => {
+                                        caption.wordTimings[wordIndex].time = time;
+                                        wordTimingItem.querySelector('.word-time-value').textContent = formatTime(time);
+                                    }
+                                );
+                            });
+                        }
+                    });
+                }
+                
                 saveBtn.textContent = 'Saved!';
                 setTimeout(() => {
                     saveBtn.textContent = 'Save';
@@ -421,23 +414,40 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Format time to MM:SS.mmm
-    function formatTime(timeInSeconds) {
-        const minutes = Math.floor(timeInSeconds / 60);
-        const seconds = Math.floor(timeInSeconds % 60);
-        const milliseconds = Math.floor((timeInSeconds % 1) * 1000);
+    // Initialize lyrics display with word timing data
+    function initializeLyricsDisplay() {
+        const lyricsDisplay = document.getElementById('lyricsDisplay');
+        lyricsDisplay.innerHTML = '';
         
-        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
-    }
-    
-    // Format time for SRT format
-    function formatSRTTime(timeInSeconds) {
-        const hours = Math.floor(timeInSeconds / 3600);
-        const minutes = Math.floor((timeInSeconds % 3600) / 60);
-        const seconds = Math.floor(timeInSeconds % 60);
-        const milliseconds = Math.floor((timeInSeconds % 1) * 1000);
-        
-        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')},${String(milliseconds).padStart(3, '0')}`;
+        // Add all captions to the lyrics display
+        captions.forEach(caption => {
+            const captionDiv = document.createElement('div');
+            captionDiv.className = 'lyrics-line';
+            captionDiv.dataset.startTime = caption.startTime;
+            captionDiv.dataset.endTime = caption.endTime;
+            
+            // Split the caption text into words
+            const words = caption.text.split(' ');
+            words.forEach((word, index) => {
+                const wordSpan = document.createElement('span');
+                wordSpan.className = 'lyrics-word';
+                wordSpan.textContent = word;
+                
+                // Add word timing data if available
+                if (caption.wordTimings && caption.wordTimings[index] && caption.wordTimings[index].time !== undefined) {
+                    wordSpan.dataset.time = caption.wordTimings[index].time;
+                }
+                
+                captionDiv.appendChild(wordSpan);
+                
+                // Add space between words except for the last word
+                if (index < words.length - 1) {
+                    captionDiv.appendChild(document.createTextNode(' '));
+                }
+            });
+            
+            lyricsDisplay.appendChild(captionDiv);
+        });
     }
     
     // Update captions export to include word timings
@@ -515,48 +525,4 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     });
-    
-    // Format time for LRC format (MM:SS.XX)
-    function formatLRCTime(timeInSeconds) {
-        const minutes = Math.floor(timeInSeconds / 60);
-        const seconds = Math.floor(timeInSeconds % 60);
-        const hundredths = Math.floor((timeInSeconds % 1) * 100);
-        
-        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(hundredths).padStart(2, '0')}`;
-    }
-    
-    // Initialize lyrics display
-    function initializeLyricsDisplay() {
-        const lyricsDisplay = document.getElementById('lyricsDisplay');
-        
-        // Add all captions to the lyrics display
-        captions.forEach(caption => {
-            const captionDiv = document.createElement('div');
-            captionDiv.className = 'lyrics-line';
-            captionDiv.dataset.startTime = caption.startTime;
-            captionDiv.dataset.endTime = caption.endTime;
-            
-            // Split the caption text into words
-            const words = caption.text.split(' ');
-            words.forEach((word, index) => {
-                const wordSpan = document.createElement('span');
-                wordSpan.className = 'lyrics-word';
-                wordSpan.textContent = word;
-                
-                // Add word timing data if available
-                if (caption.wordTimings && caption.wordTimings[index] && caption.wordTimings[index].time !== undefined) {
-                    wordSpan.dataset.time = caption.wordTimings[index].time;
-                }
-                
-                captionDiv.appendChild(wordSpan);
-                
-                // Add space between words except for the last word
-                if (index < words.length - 1) {
-                    captionDiv.appendChild(document.createTextNode(' '));
-                }
-            });
-            
-            lyricsDisplay.appendChild(captionDiv);
-        });
-    }
 });

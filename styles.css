@@ -250,3 +250,55 @@ textarea {
 .timing-mode-toggle {
     margin-bottom: 10px;
 }
+
+.word-timings-container {
+    margin-top: 10px;
+    background-color: #f9f9f9;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.word-timings-list {
+    margin-top: 10px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.word-timing-item {
+    display: flex;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.word-text {
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+.word-time-value {
+    color: #3498db;
+    margin-right: 10px;
+}
+
+.edit-word-time-btn {
+    padding: 2px 5px;
+    font-size: 0.8em;
+    background-color: #f0ad4e;
+}
+
+.edit-word-time-btn:hover {
+    background-color: #ec971f;
+}
+
+details summary {
+    cursor: pointer;
+    padding: 5px;
+    background-color: #f0f0f0;
+    border-radius: 3px;
+    margin-bottom: 5px;
+}
+
+details summary:hover {
+    background-color: #e0e0e0;
+}
