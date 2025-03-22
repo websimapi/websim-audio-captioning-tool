@@ -37,7 +37,7 @@ export function updateLyrics(currentTime, predefinedCaptions, currentCaption, ac
                 activeWords.push(index);
                 wordElement.classList.add('active');
                 
-                // Create 3D word
+                // Create 3D word - now positioned near the player's ball
                 create3DWord(word, index, scene, ball);
             } else if (!isActive && activeWords.includes(index)) {
                 // Word is no longer active
@@ -86,10 +86,10 @@ export function create3DWord(word, index, scene, ball) {
     
     const textMesh = new THREE.Mesh(geometry, material);
     
-    // Position the word above the player or in view
+    // Position the word directly above or near the player ball
     const angleOffset = Math.random() * Math.PI * 2;
-    const radius = 10 + Math.random() * 5;
-    const height = 5 + Math.random() * 8;
+    const radius = 3 + Math.random() * 2; // Closer to the ball
+    const height = 2 + Math.random() * 3; // Lower height to be more visible
     
     textMesh.position.set(
         ball.position.x + Math.cos(angleOffset) * radius,
@@ -101,7 +101,7 @@ export function create3DWord(word, index, scene, ball) {
     scene.add(textMesh);
     
     // Animate the word
-    const duration = 2000; // 2 seconds
+    const duration = 3000; // 3 seconds
     const startTime = Date.now();
     
     function animateWord() {
@@ -117,8 +117,10 @@ export function create3DWord(word, index, scene, ball) {
         
         material.opacity = 1 - progress;
         
-        // Move upward
-        textMesh.position.y += 0.05;
+        // Move upward and follow the ball
+        textMesh.position.x = ball.position.x + Math.cos(angleOffset) * radius;
+        textMesh.position.y = ball.position.y + height + progress * 3; // Float upward
+        textMesh.position.z = ball.position.z + Math.sin(angleOffset) * radius;
         
         // Rotate slightly
         textMesh.rotation.y += 0.01;

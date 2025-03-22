@@ -224,6 +224,10 @@ async function initGame() {
     ballBody = ballPhysicsBody;
     createHumans(scene, world, humans, humanBodies);
     
+    // Show lyrics container
+    lyricsContainer.style.display = 'block'; // Make sure it's visible
+    lyricsContainer.style.pointerEvents = 'none'; // Prevent interaction
+    
     // Add loading timeout
     const loadingTimeout = setTimeout(() => {
         loadingScreen.innerHTML = 'Loading taking too long. <button id="retryBtn">Retry</button>';
