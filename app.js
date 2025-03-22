@@ -9,90 +9,55 @@ document.addEventListener('DOMContentLoaded', () => {
     const progress = document.getElementById('progress');
     const timeMarkers = document.getElementById('timeMarkers');
     const captionsList = document.getElementById('captionsList');
-    const currentCaptionDisplay = document.getElementById('currentCaption');
+    const currentCaption = document.getElementById('currentCaption');
     
+    // Initialize with predefined captions if available
     let captions = [];
-    let srtCaptions = [];
-    let audioLoaded = false;
     
-    // Load SRT file
-    fetch('/captions.srt')
-        .then(response => response.text())
-        .then(srtContent => {
-            srtCaptions = parseSRT(srtContent);
-            if (audioLoaded) {
-                updateTimeline();
-            }
-        })
-        .catch(error => {
-            console.error('Error loading SRT file:', error);
+    if (config.predefinedCaptions && config.predefinedCaptions.length > 0) {
+        captions = config.predefinedCaptions.map((caption, index) => ({
+            id: index + 1,
+            startTime: caption.startTime,
+            endTime: caption.endTime,
+            text: caption.text
+        }));
+        
+        // Once loaded, render the captions
+        audioPlayer.addEventListener('loadedmetadata', () => {
+            updateCaptionEndTimes();
+            updateTimeline();
+            renderCaptions();
         });
-    
-    // Parse SRT file content
-    function parseSRT(srtContent) {
-        const entries = [];
-        const blocks = srtContent.trim().split(/\n\s*\n/);
-        
-        blocks.forEach(block => {
-            const lines = block.trim().split('\n');
-            if (lines.length >= 3) {
-                // Skip the sequence number (lines[0])
-                const timeCode = lines[1];
-                const [startTime, endTime] = parseTimeCode(timeCode);
-                
-                // Combine remaining lines as the caption text
-                const textLines = lines.slice(2);
-                const text = textLines.join('\n');
-                
-                entries.push({
-                    id: Date.now() + Math.random(),
-                    startTime,
-                    endTime,
-                    text
-                });
-            }
-        });
-        
-        return entries;
     }
     
-    // Parse SRT time code (00:00:00,000 --> 00:00:00,000)
-    function parseTimeCode(timeCode) {
-        const [start, end] = timeCode.split(' --> ');
-        return [convertSRTTimeToSeconds(start), convertSRTTimeToSeconds(end)];
-    }
-    
-    // Convert SRT time format to seconds
-    function convertSRTTimeToSeconds(timeString) {
-        const [time, milliseconds] = timeString.split(',');
-        const [hours, minutes, seconds] = time.split(':').map(Number);
-        
-        return hours * 3600 + minutes * 60 + seconds + (milliseconds / 1000);
-    }
-    
-    // Update progress bar during playback
+    // Update progress bar and current caption during playback
     audioPlayer.addEventListener('timeupdate', () => {
         const percentage = (audioPlayer.currentTime / audioPlayer.duration) * 100;
         progress.style.width = `${percentage}%`;
         
-        // Display current caption from SRT
-        displayCurrentCaption(audioPlayer.currentTime);
-    });
-    
-    // Display current caption based on playback time
-    function displayCurrentCaption(currentTime) {
-        const currentCaption = srtCaptions.find(caption => 
+        // Find and display the current caption
+        const currentTime = audioPlayer.currentTime;
+        const activeCaption = captions.find(caption => 
             currentTime >= caption.startTime && currentTime < caption.endTime
         );
         
-        if (currentCaption) {
-            currentCaptionDisplay.textContent = currentCaption.text;
-            currentCaptionDisplay.style.display = 'block';
+        if (activeCaption) {
+            currentCaption.textContent = activeCaption.text;
+            
+            // Highlight the active caption in the list
+            document.querySelectorAll('.caption-item').forEach(item => {
+                if (parseInt(item.getAttribute('data-id')) === activeCaption.id) {
+                    item.classList.add('active');
+                    // Scroll to the active caption
+                    item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    item.classList.remove('active');
+                }
+            });
         } else {
-            currentCaptionDisplay.textContent = '';
-            currentCaptionDisplay.style.display = 'none';
+            currentCaption.textContent = 'No caption for this time';
         }
-    }
+    });
     
     // Play/Pause button
     playPauseBtn.addEventListener('click', () => {
@@ -117,9 +82,22 @@ document.addEventListener('DOMContentLoaded', () => {
         // Sort captions by time
         captions.sort((a, b) => a.startTime - b.startTime);
         
+        // Update endTimes for all captions
+        updateCaptionEndTimes();
         updateTimeline();
         renderCaptions();
     });
+    
+    // Update endTimes for all captions
+    function updateCaptionEndTimes() {
+        captions.forEach((caption, index) => {
+            if (index < captions.length - 1) {
+                caption.endTime = captions[index + 1].startTime;
+            } else {
+                caption.endTime = audioPlayer.duration;
+            }
+        });
+    }
     
     // Click on progress bar to seek
     progressBar.addEventListener('click', (e) => {
@@ -132,7 +110,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateTimeline() {
         timeMarkers.innerHTML = '';
         
-        // Add markers for user-created captions
         captions.forEach(caption => {
             const percentage = (caption.startTime / audioPlayer.duration) * 100;
             const marker = document.createElement('div');
@@ -147,21 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             timeMarkers.appendChild(marker);
         });
-        
-        // Add markers for SRT captions
-        srtCaptions.forEach(caption => {
-            const startPercentage = (caption.startTime / audioPlayer.duration) * 100;
-            const startMarker = document.createElement('div');
-            startMarker.className = 'time-marker srt-marker';
-            startMarker.style.left = `${startPercentage}%`;
-            startMarker.setAttribute('data-time', caption.startTime);
-            
-            startMarker.addEventListener('click', () => {
-                audioPlayer.currentTime = caption.startTime;
-            });
-            
-            timeMarkers.appendChild(startMarker);
-        });
     }
     
     // Render captions list
@@ -174,9 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
             captionItem.setAttribute('data-id', caption.id);
             
             const startTimeFormatted = formatTime(caption.startTime);
-            const endTimeFormatted = index < captions.length - 1 
-                ? formatTime(captions[index + 1].startTime)
-                : formatTime(audioPlayer.duration);
+            const endTimeFormatted = formatTime(caption.endTime);
             
             captionItem.innerHTML = `
                 <div class="caption-time">${startTimeFormatted} - ${endTimeFormatted}</div>
@@ -205,6 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const deleteBtn = captionItem.querySelector('.delete-btn');
             deleteBtn.addEventListener('click', () => {
                 captions = captions.filter(cap => cap.id !== caption.id);
+                updateCaptionEndTimes();
                 updateTimeline();
                 renderCaptions();
             });
@@ -233,14 +194,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let srtContent = '';
         
         captions.forEach((caption, index) => {
-            const startTime = caption.startTime;
-            const endTime = index < captions.length - 1 
-                ? captions[index + 1].startTime 
-                : audioPlayer.duration;
-                
             // Format time for SRT (HH:MM:SS,mmm)
-            const startSRT = formatSRTTime(startTime);
-            const endSRT = formatSRTTime(endTime);
+            const startSRT = formatSRTTime(caption.startTime);
+            const endSRT = formatSRTTime(caption.endTime);
             
             srtContent += `${index + 1}\n`;
             srtContent += `${startSRT} --> ${endSRT}\n`;
@@ -268,15 +224,4 @@ document.addEventListener('DOMContentLoaded', () => {
         
         return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')},${String(milliseconds).padStart(3, '0')}`;
     }
-    
-    // Load audio file and setup
-    audioPlayer.addEventListener('loadedmetadata', () => {
-        audioLoaded = true;
-        updateTimeline();
-    });
-    
-    // Make sure we display captions if the audio starts playing
-    audioPlayer.addEventListener('play', () => {
-        displayCurrentCaption(audioPlayer.currentTime);
-    });
 });
