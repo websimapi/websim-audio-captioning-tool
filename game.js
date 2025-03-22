@@ -44,11 +44,15 @@ function initScene() {
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 15, 20);
     
-    // Create renderer
-    renderer = new THREE.WebGLRenderer({ antialias: true });
+    // Create renderer with better performance settings
+    renderer = new THREE.WebGLRenderer({ 
+        antialias: true,
+        powerPreference: "high-performance",
+        precision: "mediump"
+    });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
-    document.getElementById('game-container').appendChild(renderer.domElement);
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Better quality/performance trade-off
     
     // Initialize physics
     initPhysics();
@@ -161,13 +165,60 @@ function startGame() {
     }
 }
 
+function createBall(scene, world, ballRadius, ballMass) {
+    // Three.js ball with lower polygon count for better performance
+    const ballGeometry = new THREE.SphereGeometry(ballRadius, 16, 16); // Reduced from 32, 32
+    const ballMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xFF6B6B,
+        roughness: 0.5,
+        metalness: 0.2
+    });
+    const ball = new THREE.Mesh(ballGeometry, ballMaterial);
+    ball.castShadow = true;
+    ball.receiveShadow = true;
+    ball.position.set(0, ballRadius * 2, 0); // Higher starting position to avoid ground collision issues
+    scene.add(ball);
+    
+    // CANNON.js ball with better physics properties
+    const ballBody = new CANNON.Body({
+        mass: ballMass,
+        shape: new CANNON.Sphere(ballRadius),
+        position: new CANNON.Vec3(0, ballRadius * 2, 0),
+        linearDamping: 0.2, // Reduced from 0.4 for less friction
+        angularDamping: 0.2  // Reduced from 0.4
+    });
+    
+    // Add velocity cap to prevent excessive speed
+    ballBody.addEventListener('preStep', () => {
+        const maxVelocity = 30;
+        const vel = ballBody.velocity;
+        const speed = vel.length();
+        
+        if (speed > maxVelocity) {
+            vel.scale(maxVelocity / speed, vel);
+        }
+    });
+    
+    world.addBody(ballBody);
+    
+    return { ball, ballBody };
+}
+
 function update() {
     if (gameStarted) {
-        // Update physics
-        world.step(timeStep);
+        // Update physics with optimized performance
+        for (let i = 0; i < 2; i++) { // Increase physics steps for better accuracy
+            world.step(timeStep / 2);
+        }
         
         // Update player movement
         updateBallMovement(ballBody, keys);
+        
+        // Ensure ball stays above ground
+        if (ballBody.position.y < ballRadius) {
+            ballBody.position.y = ballRadius;
+            ballBody.velocity.y = Math.max(0, ballBody.velocity.y);
+        }
         
         // Handle camera rotation with arrow keys
         if (keys['ArrowLeft']) {
@@ -226,6 +277,9 @@ function update() {
     // Update animations
     if (dancerMixer) dancerMixer.update(timeStep);
     
+    // Optimize rendering
+    optimizeSceneRendering();
+    
     // Render scene
     renderer.render(scene, camera);
     
@@ -268,6 +322,24 @@ function updateDancerPosition() {
             }
         }
     }
+}
+
+function optimizeSceneRendering() {
+    scene.traverse(object => {
+        if (object.isMesh) {
+            object.frustumCulled = true;
+            
+            // Lower geometry detail for distant objects
+            if (object !== ball && !attachedObjects.some(ao => ao.mesh === object)) {
+                const distance = object.position.distanceTo(ball.position);
+                if (distance > 50) {
+                    object.visible = false;
+                } else {
+                    object.visible = true;
+                }
+            }
+        }
+    });
 }
 
 // Initialize game

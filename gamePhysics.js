@@ -108,7 +108,7 @@ export function createHumans(scene, world, humans, humanBodies) {
 }
 
 export function updateBallMovement(ballBody, keys) {
-    const force = 300;
+    const force = 800;
     
     if (keys['w']) {
         ballBody.applyLocalForce(new CANNON.Vec3(0, 0, -force));
@@ -121,6 +121,11 @@ export function updateBallMovement(ballBody, keys) {
     }
     if (keys['d']) {
         ballBody.applyLocalForce(new CANNON.Vec3(force, 0, 0));
+    }
+    
+    // Add a small upward force to prevent getting stuck
+    if (ballBody.position.y < 1.5) {
+        ballBody.applyLocalForce(new CANNON.Vec3(0, 50, 0));
     }
 }
 
