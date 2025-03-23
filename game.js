@@ -13,7 +13,7 @@ let controls;
 let keys = {};
 let gameStarted = false;
 let cameraRotation = 0;
-let cameraHeight = 30;
+let cameraHeight = 50;
 let beatDetected = false;
 let lastBeatTime = 0;
 
@@ -63,7 +63,7 @@ function initScene() {
     controls.enabled = true; // Enable for free camera movement
     
     // Create skybox
-    const skyboxGeometry = new THREE.BoxGeometry(500, 500, 500);
+    const skyboxGeometry = new THREE.BoxGeometry(1000, 1000, 1000);
     const skyboxMaterials = [
         new THREE.MeshBasicMaterial({ color: 0xFFD6E0, side: THREE.BackSide }), // right
         new THREE.MeshBasicMaterial({ color: 0xFFD6E0, side: THREE.BackSide }), // left
@@ -167,7 +167,7 @@ function update() {
 function updateCameraPosition() {
     // Orbit camera around dancer if it exists
     if (skyboxDancer) {
-        const cameraDistance = 50 + Math.sin(Date.now() * 0.001) * 10; // Add breathing motion
+        const cameraDistance = 80 + Math.sin(Date.now() * 0.0005) * 15; // Smoother breathing motion
         const dancerPos = skyboxDancer.position;
         
         // Detect beat for camera movement (simple time-based approach)
@@ -179,8 +179,8 @@ function updateCameraPosition() {
             lastBeatTime = currentTime - (currentTime % beatInterval);
             
             // Add some randomness to camera angle on beats
-            cameraRotation += (Math.random() * 0.1 - 0.05);
-            cameraHeight = 30 + Math.random() * 5;
+            cameraRotation += (Math.random() * 0.08 - 0.04);
+            cameraHeight = 50 + Math.random() * 10;
         } else {
             beatDetected = false;
         }
@@ -193,14 +193,14 @@ function updateCameraPosition() {
             
             // If beat detected, add a slight bounce effect
             if (beatDetected) {
-                camera.position.y += Math.sin(Date.now() * 0.01) * 2;
+                camera.position.y += Math.sin(Date.now() * 0.005) * 5;
             }
             
             // Always look at dancer
             camera.lookAt(dancerPos);
             
-            // Slowly rotate camera around dancer
-            cameraRotation += 0.002;
+            // Smoother camera rotation
+            cameraRotation += 0.001;
         }
     }
 }
@@ -255,7 +255,7 @@ async function initGame() {
         loadingScreen.style.display = 'none';
         
         // Set initial camera position looking at dancer
-        camera.position.set(0, 30, 50);
+        camera.position.set(0, 50, 80);
         camera.lookAt(0, 0, 0);
         controls.enabled = false; // Disable free camera to use animated camera
         

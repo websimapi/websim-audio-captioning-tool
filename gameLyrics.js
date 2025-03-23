@@ -92,15 +92,17 @@ export function create3DWord(word, index, scene, dancer) {
     const material = new THREE.MeshBasicMaterial({ 
         color: new THREE.Color(`hsl(${hue}, 100%, 70%)`),
         transparent: true,
-        opacity: 0.8
+        opacity: 0.8,
+        emissive: new THREE.Color(`hsl(${hue}, 100%, 50%)`),
+        emissiveIntensity: 0.5
     });
     
     const textMesh = new THREE.Mesh(geometry, material);
     
     // Position the word around the dancer at the dancer's height
     const angleOffset = Math.random() * Math.PI * 2;
-    const radius = 10 + Math.random() * 5; 
-    const height = dancer.position.y + 3 + Math.random() * 5;
+    const radius = 15 + Math.random() * 10; 
+    const height = dancer.position.y + 5 + Math.random() * 10;
     
     textMesh.position.set(
         dancer.position.x + Math.cos(angleOffset) * radius,
@@ -111,28 +113,35 @@ export function create3DWord(word, index, scene, dancer) {
     // Add to scene
     scene.add(textMesh);
     
+    // Add particles around the word for enhanced effect
+    addWordParticles(textMesh.position.clone(), scene, hue);
+    
     // Animate the word
-    const duration = 2000; // 2 seconds
+    const duration = 3000; // 3 seconds for smoother effect
     const startTime = Date.now();
     
     function animateWord() {
         const elapsed = Date.now() - startTime;
         const progress = Math.min(elapsed / duration, 1);
         
+        // More complex animation curve
+        const curve = 1 - Math.pow(1 - progress, 3); // Cubic ease out
+        
         // Scale and fade effect
         textMesh.scale.set(
-            1 + Math.sin(progress * Math.PI) * 0.5,
-            1 + Math.sin(progress * Math.PI) * 0.5,
-            1 + Math.sin(progress * Math.PI) * 0.5
+            1 + Math.sin(progress * Math.PI) * 0.8,
+            1 + Math.sin(progress * Math.PI) * 0.8,
+            1 + Math.sin(progress * Math.PI) * 0.8
         );
         
-        material.opacity = 1 - progress;
+        material.opacity = Math.max(0, 1 - curve * 1.2);
         
-        // Move upward
-        textMesh.position.y += 0.05;
+        // Move upward with easing
+        textMesh.position.y += 0.03 * (1 - progress);
         
-        // Rotate slightly
-        textMesh.rotation.y += 0.01;
+        // Rotate slightly with varying speed
+        textMesh.rotation.y += 0.01 * (1 - progress * 0.5);
+        textMesh.rotation.x += 0.005 * Math.sin(progress * Math.PI);
         
         if (progress < 1) {
             requestAnimationFrame(animateWord);
@@ -145,4 +154,79 @@ export function create3DWord(word, index, scene, dancer) {
     }
     
     animateWord();
+}
+
+// Add particle effects around words
+function addWordParticles(position, scene, hue) {
+    const particleCount = 15;
+    const particleGroup = new THREE.Group();
+    
+    for (let i = 0; i < particleCount; i++) {
+        const size = 0.1 + Math.random() * 0.3;
+        const geometry = new THREE.SphereGeometry(size, 8, 8);
+        const material = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(`hsl(${hue}, 100%, 70%)`),
+            transparent: true,
+            opacity: 0.6
+        });
+        
+        const particle = new THREE.Mesh(geometry, material);
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 0.5 + Math.random() * 2;
+        
+        particle.position.set(
+            position.x + Math.cos(angle) * radius,
+            position.y + Math.random() * 2 - 1,
+            position.z + Math.sin(angle) * radius
+        );
+        
+        particle.userData = {
+            angle: angle,
+            radius: radius,
+            speed: 0.01 + Math.random() * 0.02,
+            initialY: particle.position.y,
+            amplitude: 0.1 + Math.random() * 0.3,
+            frequency: 0.05 + Math.random() * 0.05
+        };
+        
+        particleGroup.add(particle);
+    }
+    
+    scene.add(particleGroup);
+    
+    // Animate particles
+    const duration = 3000;
+    const startTime = Date.now();
+    
+    function animateParticles() {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        particleGroup.children.forEach((particle, i) => {
+            // Orbit around word
+            particle.userData.angle += particle.userData.speed;
+            particle.position.x = position.x + Math.cos(particle.userData.angle) * particle.userData.radius * (1 + progress * 2);
+            particle.position.z = position.z + Math.sin(particle.userData.angle) * particle.userData.radius * (1 + progress * 2);
+            
+            // Bobbing up and down
+            particle.position.y = particle.userData.initialY + 
+                Math.sin(elapsed * particle.userData.frequency) * particle.userData.amplitude;
+            
+            // Fade out
+            particle.material.opacity = 0.6 * (1 - progress);
+        });
+        
+        if (progress < 1) {
+            requestAnimationFrame(animateParticles);
+        } else {
+            // Clean up particles
+            scene.remove(particleGroup);
+            particleGroup.children.forEach(particle => {
+                particle.geometry.dispose();
+                particle.material.dispose();
+            });
+        }
+    }
+    
+    animateParticles();
 }
