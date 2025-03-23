@@ -212,7 +212,7 @@ function update() {
         const currentTime = audioPlayer.currentTime;
         if (skyboxDancer) {
             skyboxDancer.traverse(child => {
-                if (child.isMesh && child.material.uniforms) {
+                if (child.isMesh && child.material && child.material.uniforms) {
                     // Update time value
                     child.material.uniforms.time.value = currentTime;
                     

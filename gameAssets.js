@@ -69,9 +69,10 @@ async function loadSkyboxDancer(scene) {
                         child.receiveShadow = true;
                         // Store original material
                         child.userData.originalMaterial = child.material;
-                        // Apply rainbow shader
-                        child.material = rainbowMaterial.clone();
-                        child.material.uniforms = JSON.parse(JSON.stringify(rainbowUniforms));
+                        // Clone material for each mesh to prevent shared uniforms
+                        const newMaterial = rainbowMaterial.clone();
+                        newMaterial.uniforms = JSON.parse(JSON.stringify(rainbowUniforms));
+                        child.material = newMaterial;
                     }
                 });
                 
