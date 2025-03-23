@@ -165,19 +165,8 @@ function togglePlayPause() {
     }
 }
 
-function startGameOnFirstInteraction() {
-    gameStarted = true;
-    audioPlayer.play().then(() => {
-        fixedPauseBtn.classList.remove('paused');
-        fixedPauseBtn.classList.add('playing');
-        loadingScreen.style.display = 'none';
-    }).catch(error => {
-        console.error("Error playing audio:", error);
-        loadingScreen.innerHTML = `Error starting game: ${error.message}<br><button id="retryBtn">Retry</button>`;
-        document.getElementById('retryBtn').addEventListener('click', () => {
-            window.location.reload();
-        });
-    });
+function startGame() {
+    // Removed start game function as the game starts automatically
 }
 
 function update() {
@@ -219,6 +208,25 @@ function update() {
         // Update lyrics display
         updateLyrics(audioPlayer.currentTime, config.predefinedCaptions, currentCaption, activeWords, lyricsContainer, scene, ball);
         
+        // Update rainbow shader uniforms
+        const currentTime = audioPlayer.currentTime;
+        if (skyboxDancer) {
+            skyboxDancer.traverse(child => {
+                if (child.isMesh && child.material.uniforms) {
+                    // Update time value
+                    child.material.uniforms.time.value = currentTime;
+                    
+                    // Update intensity based on audio playback position to create music reactivity
+                    let intensity = 1.0;
+                    if (audioPlayer && audioPlayer.currentTime > 0) {
+                        // Simple audio reactivity based on current time
+                        intensity = 0.8 + Math.sin(audioPlayer.currentTime * 3) * 0.2 + Math.cos(audioPlayer.currentTime * 5) * 0.2;
+                    }
+                    child.material.uniforms.intensity.value = intensity;
+                }
+            });
+        }
+        
         // Update audio visualizers
         updateAudioVisualizers();
     }
@@ -243,15 +251,15 @@ function update() {
 
 function updateSmartCamera() {
     // Simplified camera logic - focus mainly on the ball
-    const cameraDistance = 80;  
-    const cameraHeight = 40;    
+    const cameraDistance = 120;  
+    const cameraHeight = 60;    
     
     // Set dancer position to always be in front of the ball
     if (skyboxDancer) {
         skyboxDancer.position.set(
             ball.position.x, 
             0,  
-            ball.position.z - 100 
+            ball.position.z - 130  
         );
         skyboxDancer.lookAt(ball.position); 
     }
@@ -276,16 +284,6 @@ function updateAudioVisualizers() {
     if (audioPlayer && audioPlayer.currentTime > 0) {
         // Simulate audio intensity based on currentTime for simple pulsing
         intensity = 0.3 + Math.sin(audioPlayer.currentTime * 2) * 0.2;
-    }
-    
-    // Update rainbow shader uniforms on the dancer
-    if (skyboxDancer) {
-        skyboxDancer.traverse(child => {
-            if (child.isMesh && child.material && child.material.uniforms) {
-                child.material.uniforms.time.value = audioPlayer.currentTime;
-                child.material.uniforms.audioIntensity.value = intensity;
-            }
-        });
     }
     
     audioVisualizers.forEach((visualizer, index) => {
@@ -314,12 +312,11 @@ function initGame() {
     ball = ballObj;
     ballBody = ballPhysicsBody;
     
-    // Don't start game automatically - wait for user interaction
-    gameStarted = false;
-    loadingScreen.innerHTML = 'Click anywhere to start!';
-    
-    // Add event listener for user interaction to start the game
-    document.addEventListener('click', startGameOnFirstInteraction, { once: true });
+    // Start the game automatically - no click needed
+    gameStarted = true;
+    audioPlayer.play();
+    fixedPauseBtn.classList.remove('paused');
+    fixedPauseBtn.classList.add('playing');
     
     // Add loading timeout
     const loadingTimeout = setTimeout(() => {
@@ -338,7 +335,7 @@ function initGame() {
         dancerMixer = dancerMixerObj;
         
         // Hide loading screen when all assets are loaded
-        //loadingScreen.style.display = 'none';
+        loadingScreen.style.display = 'none';
         
         // Setup event listeners
         setupEventListeners();

@@ -23,53 +23,55 @@ async function loadSkyboxDancer(scene) {
             'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/models/fbx/Samba%20Dancing.fbx',
             (fbx) => {
                 const dancer = fbx;
-                dancer.scale.set(0.05, 0.05, 0.05);  
+                dancer.scale.set(0.8, 0.8, 0.8); 
                 dancer.position.set(0, 0, -100);  
                 
-                // Create shader material for rainbow effect
-                const rainbowShaderMaterial = new THREE.ShaderMaterial({
-                    uniforms: {
-                        time: { value: 0 },
-                        audioIntensity: { value: 0.5 }
-                    },
-                    vertexShader: `
-                        varying vec2 vUv;
-                        varying vec3 vPosition;
-                        void main() {
-                            vUv = uv;
-                            vPosition = position;
-                            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                        }
-                    `,
-                    fragmentShader: `
-                        uniform float time;
-                        uniform float audioIntensity;
-                        varying vec2 vUv;
-                        varying vec3 vPosition;
+                // Create rainbow shader material
+                const rainbowVertexShader = `
+                    varying vec2 vUv;
+                    void main() {
+                        vUv = uv;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `;
+                
+                const rainbowFragmentShader = `
+                    uniform float time;
+                    uniform float intensity;
+                    varying vec2 vUv;
+                    
+                    void main() {
+                        vec3 baseColor = vec3(0.8, 0.8, 0.8);
+                        float r = baseColor.r * (0.8 + 0.2 * sin(time * 1.0 + vUv.x * 10.0));
+                        float g = baseColor.g * (0.8 + 0.2 * sin(time * 0.8 + vUv.y * 10.0 + 2.0));
+                        float b = baseColor.b * (0.8 + 0.2 * sin(time * 1.2 + (vUv.x + vUv.y) * 10.0 + 4.0));
                         
-                        vec3 hsvToRgb(float h, float s, float v) {
-                            vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-                            vec3 p = abs(fract(vec3(h) + K.xyz) * 6.0 - K.www);
-                            return v * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), s);
-                        }
-                        
-                        void main() {
-                            float hue = mod(vPosition.y * 0.1 + time * 0.2, 1.0);
-                            float saturation = 0.7 + audioIntensity * 0.3;
-                            float value = 0.8 + audioIntensity * 0.2;
-                            
-                            vec3 color = hsvToRgb(hue, saturation, value);
-                            gl_FragColor = vec4(color, 1.0);
-                        }
-                    `
+                        vec3 rainbowColor = vec3(r, g, b) * vec3(intensity);
+                        gl_FragColor = vec4(rainbowColor, 1.0);
+                    }
+                `;
+                
+                const rainbowUniforms = {
+                    time: { value: 0 },
+                    intensity: { value: 1.0 }
+                };
+                
+                const rainbowMaterial = new THREE.ShaderMaterial({
+                    uniforms: rainbowUniforms,
+                    vertexShader: rainbowVertexShader,
+                    fragmentShader: rainbowFragmentShader,
+                    side: THREE.DoubleSide
                 });
                 
                 dancer.traverse(child => {
                     if (child.isMesh) {
                         child.castShadow = true;
                         child.receiveShadow = true;
-                        // Apply the rainbow shader material
-                        child.material = rainbowShaderMaterial.clone();
+                        // Store original material
+                        child.userData.originalMaterial = child.material;
+                        // Apply rainbow shader
+                        child.material = rainbowMaterial.clone();
+                        child.material.uniforms = JSON.parse(JSON.stringify(rainbowUniforms));
                     }
                 });
                 
