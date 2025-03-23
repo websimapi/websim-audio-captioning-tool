@@ -165,8 +165,19 @@ function togglePlayPause() {
     }
 }
 
-function startGame() {
-    // Removed start game function as the game starts automatically
+function startGameOnFirstInteraction() {
+    gameStarted = true;
+    audioPlayer.play().then(() => {
+        fixedPauseBtn.classList.remove('paused');
+        fixedPauseBtn.classList.add('playing');
+        loadingScreen.style.display = 'none';
+    }).catch(error => {
+        console.error("Error playing audio:", error);
+        loadingScreen.innerHTML = `Error starting game: ${error.message}<br><button id="retryBtn">Retry</button>`;
+        document.getElementById('retryBtn').addEventListener('click', () => {
+            window.location.reload();
+        });
+    });
 }
 
 function update() {
@@ -303,11 +314,12 @@ function initGame() {
     ball = ballObj;
     ballBody = ballPhysicsBody;
     
-    // Start the game automatically - no click needed
-    gameStarted = true;
-    audioPlayer.play();
-    fixedPauseBtn.classList.remove('paused');
-    fixedPauseBtn.classList.add('playing');
+    // Don't start game automatically - wait for user interaction
+    gameStarted = false;
+    loadingScreen.innerHTML = 'Click anywhere to start!';
+    
+    // Add event listener for user interaction to start the game
+    document.addEventListener('click', startGameOnFirstInteraction, { once: true });
     
     // Add loading timeout
     const loadingTimeout = setTimeout(() => {
@@ -326,7 +338,7 @@ function initGame() {
         dancerMixer = dancerMixerObj;
         
         // Hide loading screen when all assets are loaded
-        loadingScreen.style.display = 'none';
+        //loadingScreen.style.display = 'none';
         
         // Setup event listeners
         setupEventListeners();
