@@ -1,28 +1,36 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { world, timeStep, initPhysics, createInfiniteGround } from './gamePhysics.js';
+import { world, timeStep, initPhysics, createBall, createHumans, createInfiniteGround } from './gamePhysics.js';
 import { loadCharacters } from './gameAssets.js';
 import { config } from './config.js';
-import { updateLyrics } from './gameLyrics.js';
+import { updateBallMovement, checkCollisions, attachHumanToBall, createAttachmentEffect } from './gamePhysics.js';
+import { updateRunningHuman, updateAttachedObjects } from './gameAnimation.js';
+import { updateLyrics, updateLyricsDisplay, create3DWord } from './gameLyrics.js';
 
 // Game variables
 let scene, camera, renderer;
+let ball, ballBody, ground, groundBody;
 let terrainSystem; 
+let humans = [], humanBodies = [];
 let skyboxDancer, dancerMixer;
 let controls;
 let keys = {};
+let attachedObjects = [];
+let ballRadius = 2;
+let ballMass = 10;
 let gameStarted = false;
 let cameraRotation = 0;
-let cameraHeight = 50;
-let beatDetected = false;
-let lastBeatTime = 0;
 
 // Audio and lyrics variables
 const audioPlayer = document.getElementById('audioPlayer');
-const startGameBtn = document.getElementById('startGameBtn');
 const lyricsContainer = document.getElementById('lyrics-container');
 const loadingScreen = document.getElementById('loading-screen');
 const fixedPauseBtn = document.getElementById('fixedPauseBtn');
+
+// Game state
+let currentCaption = null;
+let activeWords = [];
+let score = 0;
 
 // Initialize Three.js scene and physics world
 function initScene() {
@@ -44,26 +52,31 @@ function initScene() {
     initPhysics();
     
     // Add lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
     
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
     directionalLight.position.set(20, 30, 10);
     directionalLight.castShadow = true;
     directionalLight.shadow.mapSize.width = 2048;
     directionalLight.shadow.mapSize.height = 2048;
     scene.add(directionalLight);
     
-    // Create controls for camera movement
+    // Create controls for debugging
     controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
-    controls.minDistance = 10;
-    controls.maxDistance = 500;
-    controls.enabled = true; // Enable for free camera movement
+    controls.enabled = false; // Disable for gameplay
     
     // Create skybox
-    const skyboxGeometry = new THREE.BoxGeometry(1000, 1000, 1000);
+    createSkybox();
+    
+    // Add event listener to start game on click
+    renderer.domElement.addEventListener('click', startGame);
+}
+
+function createSkybox() {
+    const skyboxGeometry = new THREE.BoxGeometry(500, 500, 500);
     const skyboxMaterials = [
         new THREE.MeshBasicMaterial({ color: 0xFFD6E0, side: THREE.BackSide }), // right
         new THREE.MeshBasicMaterial({ color: 0xFFD6E0, side: THREE.BackSide }), // left
@@ -80,17 +93,6 @@ function setupEventListeners() {
     // Keyboard controls
     window.addEventListener('keydown', (e) => {
         keys[e.key] = true;
-        
-        // Camera rotation with arrow keys
-        if (e.key === 'ArrowLeft') {
-            cameraRotation += 0.1;
-        } else if (e.key === 'ArrowRight') {
-            cameraRotation -= 0.1;
-        } else if (e.key === 'ArrowUp') {
-            camera.position.y += 5;
-        } else if (e.key === 'ArrowDown') {
-            camera.position.y -= 5;
-        }
     });
     
     window.addEventListener('keyup', (e) => {
@@ -104,34 +106,52 @@ function setupEventListeners() {
         renderer.setSize(window.innerWidth, window.innerHeight);
     });
     
-    // Start game button
-    startGameBtn.addEventListener('click', () => {
-        gameStarted = true;
+    // Play/Pause button
+    fixedPauseBtn.addEventListener('click', togglePlayPause);
+    
+    // Audio player events
+    audioPlayer.addEventListener('ended', () => {
+        gameStarted = false;
+        // Show results or restart option
+    });
+}
+
+function togglePlayPause() {
+    if (audioPlayer.paused) {
         audioPlayer.play();
         fixedPauseBtn.classList.remove('paused');
         fixedPauseBtn.classList.add('playing');
-    });
-    
-    // Play/Pause button
-    fixedPauseBtn.addEventListener('click', () => {
-        if (audioPlayer.paused) {
-            audioPlayer.play();
-            fixedPauseBtn.classList.remove('paused');
-            fixedPauseBtn.classList.add('playing');
-            gameStarted = true;
-        } else {
-            audioPlayer.pause();
-            fixedPauseBtn.classList.remove('playing');
-            fixedPauseBtn.classList.add('paused');
-            gameStarted = false;
+        gameStarted = true;
+    } else {
+        audioPlayer.pause();
+        fixedPauseBtn.classList.remove('playing');
+        fixedPauseBtn.classList.add('paused');
+        gameStarted = false;
+    }
+}
+
+function startGame() {
+    if (!gameStarted) {
+        // If we're still stuck in loading, offer simplified game
+        if (loadingScreen.style.display !== 'none') {
+            // Hide loading screen and start with simplified graphics
+            loadingScreen.style.display = 'none';
         }
-    });
+        
+        audioPlayer.play();
+        gameStarted = true;
+        fixedPauseBtn.classList.remove('paused');
+        fixedPauseBtn.classList.add('playing');
+    }
 }
 
 function update() {
     if (gameStarted) {
         // Update physics
         world.step(timeStep);
+        
+        // Update player movement
+        updateBallMovement(ballBody, keys);
         
         // Handle camera rotation with arrow keys
         if (keys['ArrowLeft']) {
@@ -141,15 +161,42 @@ function update() {
             cameraRotation -= 0.02;
         }
         
-        // Update lyrics display with proper parameters
-        updateLyrics(audioPlayer.currentTime, config.predefinedCaptions, null, [], lyricsContainer, scene, skyboxDancer);
+        // Update ball position from physics
+        ball.position.copy(ballBody.position);
+        ball.quaternion.copy(ballBody.quaternion);
         
-        // Position dancer in the center
-        positionDancerInCenter();
+        // Update humans position from physics
+        humans.forEach((human, index) => {
+            if (!human.attached) {
+                human.mesh.position.copy(human.body.position);
+                human.mesh.quaternion.copy(human.body.quaternion);
+            }
+        });
+        
+        // Update terrain chunks based on player position
+        if (terrainSystem && ball) {
+            terrainSystem.updateChunks(ball.position);
+        }
+        
+        // Update attached objects
+        updateAttachedObjects(attachedObjects, ball);
+        
+        // Update lyrics display
+        updateLyrics(audioPlayer.currentTime, config.predefinedCaptions, currentCaption, activeWords, lyricsContainer, scene, ball);
+        
+        // Update dancer position to keep in view
+        updateDancerPosition();
     }
     
-    // Update camera based on rotation
-    updateCameraPosition();
+    // Update camera to follow the ball
+    if (ball) {
+        const cameraDistance = 100; 
+        const cameraHeight = 60;   
+        camera.position.x = ball.position.x + Math.sin(cameraRotation) * cameraDistance;
+        camera.position.z = ball.position.z + Math.cos(cameraRotation) * cameraDistance;
+        camera.position.y = ball.position.y + cameraHeight; 
+        camera.lookAt(ball.position);
+    }
     
     // Update controls
     if (controls) controls.update();
@@ -164,57 +211,40 @@ function update() {
     requestAnimationFrame(update);
 }
 
-function updateCameraPosition() {
-    // Orbit camera around dancer if it exists
-    if (skyboxDancer) {
-        const cameraDistance = 80 + Math.sin(Date.now() * 0.0005) * 15; // Smoother breathing motion
-        const dancerPos = skyboxDancer.position;
+function updateDancerPosition() {
+    if (skyboxDancer && camera) {
+        // Get current camera direction
+        const cameraDirection = new THREE.Vector3();
+        camera.getWorldDirection(cameraDirection);
         
-        // Detect beat for camera movement (simple time-based approach)
-        const currentTime = audioPlayer.currentTime;
-        const beatInterval = 0.5; // Assume 120 BPM (1 beat every 0.5 seconds)
+        // Position dancer 100 units in front of the camera at a fixed height
+        // to ensure it's always visible
+        const distanceFromCamera = 200;
+        const fixedHeight = 20; // Fixed height to ensure visibility
         
-        if (currentTime - lastBeatTime >= beatInterval) {
-            beatDetected = true;
-            lastBeatTime = currentTime - (currentTime % beatInterval);
-            
-            // Add some randomness to camera angle on beats
-            cameraRotation += (Math.random() * 0.08 - 0.04);
-            cameraHeight = 50 + Math.random() * 10;
-        } else {
-            beatDetected = false;
+        // Calculate position in front of camera
+        const targetPosition = new THREE.Vector3();
+        targetPosition.copy(camera.position)
+            .add(cameraDirection.multiplyScalar(distanceFromCamera));
+        
+        // Set fixed height
+        targetPosition.y = fixedHeight;
+        
+        // Smoothly move dancer to the target position (lerp)
+        if (skyboxDancer.position.distanceTo(targetPosition) > 1) {
+            skyboxDancer.position.lerp(targetPosition, 0.05);
         }
         
-        if (!controls.enabled) {
-            // Apply smoother camera motion with beat reactions
-            camera.position.x = dancerPos.x + Math.sin(cameraRotation) * cameraDistance;
-            camera.position.z = dancerPos.z + Math.cos(cameraRotation) * cameraDistance;
-            camera.position.y = dancerPos.y + cameraHeight;
-            
-            // If beat detected, add a slight bounce effect
-            if (beatDetected) {
-                camera.position.y += Math.sin(Date.now() * 0.005) * 5;
-            }
-            
-            // Always look at dancer
-            camera.lookAt(dancerPos);
-            
-            // Smoother camera rotation
-            cameraRotation += 0.001;
-        }
-    }
-}
-
-function positionDancerInCenter() {
-    if (skyboxDancer) {
-        // Keep dancer at center position, but elevated
-        skyboxDancer.position.set(0, config.dancerHeight, 0);
-        
-        // Make dancer face the camera
+        // Make dancer always face the camera
         skyboxDancer.lookAt(camera.position);
         
-        // Set larger scale
-        skyboxDancer.scale.set(config.dancerScale, config.dancerScale, config.dancerScale);
+        // Ensure the dancer is always dancing by checking animation
+        if (dancerMixer && dancerMixer.clipAction) {
+            const action = dancerMixer.clipAction(skyboxDancer.animations[0]);
+            if (action && !action.isRunning()) {
+                action.play();
+            }
+        }
     }
 }
 
@@ -223,8 +253,11 @@ async function initGame() {
     // Initialize scene
     initScene();
     
-    // Create environment with infinite terrain
+    // Create environment with infinite terrain instead of single ground
     terrainSystem = createInfiniteGround(scene, world);
+    const { ball: ballObj, ballBody: ballPhysicsBody } = createBall(scene, world, ballRadius, ballMass);
+    ball = ballObj;
+    ballBody = ballPhysicsBody;
     
     // Add loading timeout
     const loadingTimeout = setTimeout(() => {
@@ -235,7 +268,7 @@ async function initGame() {
     }, 15000); // 15 seconds timeout
     
     try {
-        // Load only the dancer character
+        // Load only the dancer character, skipping the running human
         const { skyboxDancerObj, dancerMixerObj } = await loadCharacters(scene);
         
         // Clear timeout since loading succeeded
@@ -245,19 +278,8 @@ async function initGame() {
         skyboxDancer = skyboxDancerObj;
         dancerMixer = dancerMixerObj;
         
-        // Position dancer in center initially with increased height and size
-        if (skyboxDancer) {
-            skyboxDancer.position.set(0, config.dancerHeight, 0);
-            skyboxDancer.scale.set(config.dancerScale, config.dancerScale, config.dancerScale);
-        }
-        
         // Hide loading screen when all assets are loaded
         loadingScreen.style.display = 'none';
-        
-        // Set initial camera position looking at dancer
-        camera.position.set(0, 50, 80);
-        camera.lookAt(0, 0, 0);
-        controls.enabled = false; // Disable free camera to use animated camera
         
         // Setup event listeners
         setupEventListeners();
@@ -279,5 +301,6 @@ window.addEventListener('DOMContentLoaded', initGame);
 
 // Export game objects for other modules
 export { 
-    scene, camera, renderer, skyboxDancer, dancerMixer, controls, terrainSystem
+    scene, camera, renderer, ball, ballBody, humans, humanBodies, 
+    skyboxDancer, dancerMixer, controls, attachedObjects, terrainSystem
 };

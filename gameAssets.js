@@ -24,7 +24,7 @@ async function loadSkyboxDancer(scene) {
             (fbx) => {
                 const dancer = fbx;
                 dancer.scale.set(0.1, 0.1, 0.1); 
-                dancer.position.set(0, 0, 0);  
+                dancer.position.set(0, 0, -200);  
                 dancer.traverse(child => {
                     if (child.isMesh) {
                         child.castShadow = true;
@@ -57,7 +57,7 @@ async function loadSkyboxDancer(scene) {
                 const geometry = new THREE.BoxGeometry(2, 4, 2);
                 const material = new THREE.MeshBasicMaterial({ color: 0xff00ff, emissive: 0x303030 });
                 const dancer = new THREE.Mesh(geometry, material);
-                dancer.position.set(0, 0, 0);
+                dancer.position.set(0, 0, -200);
                 scene.add(dancer);
                 resolve({ dancer, mixer: new THREE.AnimationMixer(dancer) });
             }

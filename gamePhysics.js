@@ -8,7 +8,7 @@ export const timeStep = 1/60;
 // Initialize physics world
 export function initPhysics() {
     world = new CANNON.World({
-        gravity: new CANNON.Vec3(0, -9.82, 0)
+        gravity: new CANNON.Vec3(0, -20, 0)
     });
 }
 
@@ -50,13 +50,13 @@ export function createBall(scene, world, ballRadius, ballMass) {
     ball.position.set(0, ballRadius, 0);
     scene.add(ball);
     
-    // CANNON.js ball
+    // CANNON.js ball with simplified physics
     const ballBody = new CANNON.Body({
         mass: ballMass,
         shape: new CANNON.Sphere(ballRadius),
         position: new CANNON.Vec3(0, ballRadius, 0),
-        linearDamping: 0.4,
-        angularDamping: 0.4
+        linearDamping: 0.2,  // Reduced damping for faster movement
+        angularDamping: 0.2  // Reduced damping for faster rotation
     });
     world.addBody(ballBody);
     
@@ -108,7 +108,7 @@ export function createHumans(scene, world, humans, humanBodies) {
 }
 
 export function updateBallMovement(ballBody, keys) {
-    const force = 1500;
+    const force = 3000;  // Increased force for faster movement
     
     if (keys['w']) {
         ballBody.applyLocalForce(new CANNON.Vec3(0, 0, -force));
@@ -121,6 +121,11 @@ export function updateBallMovement(ballBody, keys) {
     }
     if (keys['d']) {
         ballBody.applyLocalForce(new CANNON.Vec3(force, 0, 0));
+    }
+    
+    // Add a small upward force when spacebar is pressed for a simple jump
+    if (keys[' ']) {
+        ballBody.applyLocalForce(new CANNON.Vec3(0, force * 2, 0));
     }
 }
 

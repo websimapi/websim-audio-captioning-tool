@@ -12,9 +12,7 @@ export const config = {
     humanCount: 20,
     minHumanSize: 0.5,
     maxHumanSize: 2,
-    dancerScale: 1.5, 
-    dancerHeight: 20, 
-
+    
     // Predefined captions from the user input with word timings
     predefinedCaptions: [
         { 
