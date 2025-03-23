@@ -23,15 +23,15 @@ async function loadSkyboxDancer(scene) {
             'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/models/fbx/Samba%20Dancing.fbx',
             (fbx) => {
                 const dancer = fbx;
-                dancer.scale.set(0.04, 0.04, 0.04); 
-                dancer.position.set(0, 0, -150);  
+                dancer.scale.set(0.8, 0.8, 0.8); 
+                dancer.position.set(0, 0, -100);  
                 dancer.traverse(child => {
                     if (child.isMesh) {
                         child.castShadow = true;
                         child.receiveShadow = true;
                         if (child.material) {
-                            child.material.emissive = new THREE.Color(0x404040);
-                            child.material.emissiveIntensity = 0.7; 
+                            child.material.emissive = new THREE.Color(0x808080);
+                            child.material.emissiveIntensity = 1.0; 
                         }
                     }
                 });

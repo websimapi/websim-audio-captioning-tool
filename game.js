@@ -73,7 +73,7 @@ function initScene() {
     createSkybox();
     
     // Add event listener to start game on click
-    renderer.domElement.addEventListener('click', startGame);
+    // Removed event listener as the game starts automatically
 }
 
 function createSkybox() {
@@ -166,18 +166,7 @@ function togglePlayPause() {
 }
 
 function startGame() {
-    if (!gameStarted) {
-        // If we're still stuck in loading, offer simplified game
-        if (loadingScreen.style.display !== 'none') {
-            // Hide loading screen and start with simplified graphics
-            loadingScreen.style.display = 'none';
-        }
-        
-        audioPlayer.play();
-        gameStarted = true;
-        fixedPauseBtn.classList.remove('paused');
-        fixedPauseBtn.classList.add('playing');
-    }
+    // Removed start game function as the game starts automatically
 }
 
 function update() {
@@ -242,25 +231,32 @@ function update() {
 }
 
 function updateSmartCamera() {
-    // Calculate midpoint between ball and dancer
-    const midpoint = new THREE.Vector3().addVectors(
-        ball.position, 
-        skyboxDancer.position
-    ).multiplyScalar(0.5);
+    // Simplified camera logic - focus mainly on the ball
+    const cameraDistance = 50;
+    const cameraHeight = 30;
     
-    // Calculate distance between ball and dancer
-    const distance = ball.position.distanceTo(skyboxDancer.position);
+    // Set dancer position to always be in front of the ball
+    if (skyboxDancer) {
+        skyboxDancer.position.set(
+            ball.position.x, 
+            0,  
+            ball.position.z - 100 // Always 100 units in front of ball
+        );
+        skyboxDancer.lookAt(ball.position); // Make dancer face the ball
+    }
     
-    // Set camera position based on midpoint, distance, and camera rotation
-    const cameraDistance = Math.max(distance * 0.8, 80);
-    const cameraHeight = cameraDistance * 0.6;
+    // Position camera to see both ball and dancer
+    camera.position.x = ball.position.x + Math.sin(cameraRotation) * cameraDistance;
+    camera.position.z = ball.position.z + Math.cos(cameraRotation) * cameraDistance;
+    camera.position.y = ball.position.y + cameraHeight;
     
-    camera.position.x = midpoint.x + Math.sin(cameraRotation) * cameraDistance;
-    camera.position.z = midpoint.z + Math.cos(cameraRotation) * cameraDistance;
-    camera.position.y = midpoint.y + cameraHeight;
-    
-    // Look at midpoint
-    camera.lookAt(midpoint);
+    // Look slightly ahead of the ball toward the dancer
+    const lookTarget = new THREE.Vector3(
+        ball.position.x,
+        ball.position.y,
+        ball.position.z - 40
+    );
+    camera.lookAt(lookTarget);
 }
 
 function updateAudioVisualizers() {
@@ -284,41 +280,7 @@ function updateAudioVisualizers() {
     });
 }
 
-function updateDancerPosition() {
-    if (skyboxDancer && camera) {
-        // Get current camera direction
-        const cameraDirection = new THREE.Vector3();
-        camera.getWorldDirection(cameraDirection);
-        
-        // Calculate position relative to ball position
-        const distanceFromBall = 150;
-        const angleOffset = Math.PI / 4; // 45 degrees offset
-        
-        // Calculate position in front of the ball, offset by angle
-        const targetPosition = new THREE.Vector3(
-            ball.position.x + Math.sin(cameraRotation + angleOffset) * distanceFromBall,
-            0,
-            ball.position.z + Math.cos(cameraRotation + angleOffset) * distanceFromBall
-        );
-        
-        // Smoothly move dancer to the target position (lerp)
-        skyboxDancer.position.lerp(targetPosition, 0.02);
-        
-        // Make dancer face the ball
-        skyboxDancer.lookAt(ball.position);
-        
-        // Ensure the dancer is always dancing by checking animation
-        if (dancerMixer && dancerMixer.clipAction) {
-            const action = dancerMixer.clipAction(skyboxDancer.animations[0]);
-            if (action && !action.isRunning()) {
-                action.play();
-            }
-        }
-    }
-}
-
-// Initialize game
-async function initGame() {
+function initGame() {
     // Initialize scene
     initScene();
     
@@ -331,9 +293,11 @@ async function initGame() {
     ball = ballObj;
     ballBody = ballPhysicsBody;
     
-    // Adjust physics parameters for better control
-    ballBody.linearDamping = 0.2;
-    ballBody.angularDamping = 0.5;
+    // Start the game automatically - no click needed
+    gameStarted = true;
+    audioPlayer.play();
+    fixedPauseBtn.classList.remove('paused');
+    fixedPauseBtn.classList.add('playing');
     
     // Add loading timeout
     const loadingTimeout = setTimeout(() => {

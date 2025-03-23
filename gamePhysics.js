@@ -108,14 +108,9 @@ export function createHumans(scene, world, humans, humanBodies) {
 }
 
 export function updateBallMovement(ballBody, keys) {
-    // Improved movement with better physics feel
-    const maxSpeed = 40; // Higher max speed
-    const force = 600;  // Increased force for faster movement
-    const dampingFactor = 0.92; // Slightly less damping for smoother movement
-    
-    // Apply damping to current velocity
-    ballBody.velocity.x *= dampingFactor;
-    ballBody.velocity.z *= dampingFactor;
+    // Simplified movement with more direct control
+    const maxSpeed = 60; // Higher max speed
+    const force = 800;  // Increased force for faster acceleration
     
     // Calculate forces based on key presses
     let forceX = 0;
@@ -126,16 +121,9 @@ export function updateBallMovement(ballBody, keys) {
     if (keys['a'] || keys['A']) forceX -= force;
     if (keys['d'] || keys['D']) forceX += force;
     
-    // Apply forces
-    ballBody.applyLocalForce(new CANNON.Vec3(forceX * timeStep, 0, forceZ * timeStep), new CANNON.Vec3(0, 0, 0));
-    
-    // Clamp max speed
-    const currentSpeedSq = ballBody.velocity.x * ballBody.velocity.x + ballBody.velocity.z * ballBody.velocity.z;
-    if (currentSpeedSq > maxSpeed * maxSpeed) {
-        const currentSpeed = Math.sqrt(currentSpeedSq);
-        ballBody.velocity.x = (ballBody.velocity.x / currentSpeed) * maxSpeed;
-        ballBody.velocity.z = (ballBody.velocity.z / currentSpeed) * maxSpeed;
-    }
+    // Apply forces directly as velocity changes for more responsive control
+    ballBody.velocity.x = forceX ? (forceX > 0 ? maxSpeed : -maxSpeed) * 0.8 : ballBody.velocity.x * 0.9;
+    ballBody.velocity.z = forceZ ? (forceZ > 0 ? maxSpeed : -maxSpeed) * 0.8 : ballBody.velocity.z * 0.9;
     
     // Add a small upward force when spacebar is pressed for a simple jump
     if (keys[' '] && Math.abs(ballBody.velocity.y) < 0.1) {
