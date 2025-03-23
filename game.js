@@ -312,11 +312,11 @@ function initGame() {
     ball = ballObj;
     ballBody = ballPhysicsBody;
     
-    // Start the game automatically - no click needed
-    gameStarted = true;
-    audioPlayer.play();
-    fixedPauseBtn.classList.remove('paused');
-    fixedPauseBtn.classList.add('playing');
+    // Don't start the game automatically - wait for user interaction
+    gameStarted = false;
+    // Add a click or touch handler to start audio playback
+    document.addEventListener('click', startAudioPlayback, { once: true });
+    document.addEventListener('touchstart', startAudioPlayback, { once: true });
     
     // Add loading timeout
     const loadingTimeout = setTimeout(() => {
@@ -350,6 +350,21 @@ function initGame() {
             window.location.reload();
         });
     });
+}
+
+function startAudioPlayback() {
+    // Start the game after user interaction
+    gameStarted = true;
+    audioPlayer.play().catch(error => {
+        console.error("Audio playback failed:", error);
+    });
+    fixedPauseBtn.classList.remove('paused');
+    fixedPauseBtn.classList.add('playing');
+    
+    // Hide the loading screen if it's still visible
+    if (loadingScreen) {
+        loadingScreen.style.display = 'none';
+    }
 }
 
 // Start the game when the page loads
