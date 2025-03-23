@@ -231,9 +231,9 @@ function update() {
 }
 
 function updateSmartCamera() {
-    // Simplified camera logic - focus mainly on the ball
-    const cameraDistance = 80;  
-    const cameraHeight = 40;    
+    // Significantly increased camera distance for zooming out further
+    const cameraDistance = 150;  
+    const cameraHeight = 80;    
     
     // Set dancer position to always be in front of the ball
     if (skyboxDancer) {
@@ -242,7 +242,18 @@ function updateSmartCamera() {
             0,  
             ball.position.z - 100 
         );
-        skyboxDancer.lookAt(ball.position); 
+        skyboxDancer.lookAt(ball.position);
+        
+        // Update rainbow shader uniforms based on audio
+        skyboxDancer.traverse(child => {
+            if (child.isMesh && child.material && child.material.uniforms) {
+                child.material.uniforms.time.value = audioPlayer.currentTime * 0.5;
+                
+                // Get audio intensity - we'll use a simple sine wave if Web Audio API is not available
+                let audioIntensity = 0.5 + Math.sin(audioPlayer.currentTime * 2) * 0.5;
+                child.material.uniforms.intensity.value = audioIntensity;
+            }
+        });
     }
     
     // Position camera to see both ball and dancer

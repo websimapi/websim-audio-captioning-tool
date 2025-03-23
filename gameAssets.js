@@ -23,16 +23,45 @@ async function loadSkyboxDancer(scene) {
             'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/models/fbx/Samba%20Dancing.fbx',
             (fbx) => {
                 const dancer = fbx;
-                dancer.scale.set(0.8, 0.8, 0.8); 
+                dancer.scale.set(0.016, 0.016, 0.016); 
                 dancer.position.set(0, 0, -100);  
+                
+                // Create rainbow shader material
+                const rainbowMaterial = new THREE.ShaderMaterial({
+                    uniforms: {
+                        time: { value: 0.0 },
+                        intensity: { value: 0.5 }
+                    },
+                    vertexShader: `
+                        varying vec2 vUv;
+                        void main() {
+                            vUv = uv;
+                            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                        }
+                    `,
+                    fragmentShader: `
+                        uniform float time;
+                        uniform float intensity;
+                        varying vec2 vUv;
+                        void main() {
+                            float i = intensity * 2.0;
+                            vec3 color = vec3(
+                                sin(vUv.x * 6.28 + time) * 0.5 + 0.5,
+                                sin(vUv.y * 6.28 + time + 2.09) * 0.5 + 0.5,
+                                sin((vUv.x + vUv.y) * 6.28 + time + 4.19) * 0.5 + 0.5
+                            );
+                            gl_FragColor = vec4(color * i, 1.0);
+                        }
+                    `,
+                    side: THREE.DoubleSide,
+                    wireframe: false
+                });
+                
                 dancer.traverse(child => {
                     if (child.isMesh) {
                         child.castShadow = true;
                         child.receiveShadow = true;
-                        if (child.material) {
-                            child.material.emissive = new THREE.Color(0x808080);
-                            child.material.emissiveIntensity = 1.0; 
-                        }
+                        child.material = rainbowMaterial.clone();
                     }
                 });
                 
