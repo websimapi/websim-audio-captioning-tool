@@ -245,19 +245,19 @@ function update() {
 
 function updateSmartCamera() {
     // Significantly increased camera distance for zooming out further
-    const cameraDistance = 200;  
-    const cameraHeight = 100;    
+    const cameraDistance = 250;  
+    const cameraHeight = 120;    
     
     // Set dancer position to always be in front of the ball
     if (skyboxDancer) {
         skyboxDancer.position.set(
             ball.position.x, 
             0,  
-            ball.position.z - 50  
+            ball.position.z - 100  
         );
         
         // Ensure the dancer is visible by scaling it larger
-        skyboxDancer.scale.set(0.05, 0.05, 0.05);
+        skyboxDancer.scale.set(0.2, 0.2, 0.2);
         
         skyboxDancer.lookAt(ball.position);
         
