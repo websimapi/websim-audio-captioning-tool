@@ -97,14 +97,14 @@ export function create3DWord(word, index, scene, dancer) {
     
     const textMesh = new THREE.Mesh(geometry, material);
     
-    // Position the word around the dancer
+    // Position the word around the dancer at the dancer's height
     const angleOffset = Math.random() * Math.PI * 2;
-    const radius = 5 + Math.random() * 3;
-    const height = 3 + Math.random() * 5;
+    const radius = 10 + Math.random() * 5; 
+    const height = dancer.position.y + 3 + Math.random() * 5;
     
     textMesh.position.set(
         dancer.position.x + Math.cos(angleOffset) * radius,
-        dancer.position.y + height,
+        height,
         dancer.position.z + Math.sin(angleOffset) * radius
     );
     

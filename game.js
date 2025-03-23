@@ -107,6 +107,9 @@ function setupEventListeners() {
     // Start game button
     startGameBtn.addEventListener('click', () => {
         gameStarted = true;
+        audioPlayer.play();
+        fixedPauseBtn.classList.remove('paused');
+        fixedPauseBtn.classList.add('playing');
     });
     
     // Play/Pause button
@@ -204,14 +207,14 @@ function updateCameraPosition() {
 
 function positionDancerInCenter() {
     if (skyboxDancer) {
-        // Keep dancer at center position
-        skyboxDancer.position.set(0, 0, 0);
+        // Keep dancer at center position, but elevated
+        skyboxDancer.position.set(0, config.dancerHeight, 0);
         
         // Make dancer face the camera
         skyboxDancer.lookAt(camera.position);
         
-        // Set appropriate scale
-        skyboxDancer.scale.set(0.2, 0.2, 0.2);
+        // Set larger scale
+        skyboxDancer.scale.set(config.dancerScale, config.dancerScale, config.dancerScale);
     }
 }
 
@@ -242,10 +245,10 @@ async function initGame() {
         skyboxDancer = skyboxDancerObj;
         dancerMixer = dancerMixerObj;
         
-        // Position dancer in center initially
+        // Position dancer in center initially with increased height and size
         if (skyboxDancer) {
-            skyboxDancer.position.set(0, 0, 0);
-            skyboxDancer.scale.set(0.2, 0.2, 0.2);
+            skyboxDancer.position.set(0, config.dancerHeight, 0);
+            skyboxDancer.scale.set(config.dancerScale, config.dancerScale, config.dancerScale);
         }
         
         // Hide loading screen when all assets are loaded
