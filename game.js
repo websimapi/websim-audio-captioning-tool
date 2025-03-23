@@ -134,23 +134,6 @@ function setupEventListeners() {
         keys[e.key] = false;
     });
     
-    // Add click event to start game
-    document.addEventListener('click', function startOnFirstClick() {
-        if (!gameStarted) {
-            audioPlayer.play().then(() => {
-                gameStarted = true;
-                fixedPauseBtn.classList.remove('paused');
-                fixedPauseBtn.classList.add('playing');
-                loadingScreen.style.display = 'none';
-            }).catch(error => {
-                console.error("Error playing audio:", error);
-                loadingScreen.innerHTML = "Click again to start";
-            });
-        }
-        // Only needed once
-        document.removeEventListener('click', startOnFirstClick);
-    });
-    
     // Window resize
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
@@ -180,6 +163,10 @@ function togglePlayPause() {
         fixedPauseBtn.classList.add('paused');
         gameStarted = false;
     }
+}
+
+function startGame() {
+    // Removed start game function as the game starts automatically
 }
 
 function update() {
@@ -233,10 +220,8 @@ function update() {
     // Update controls
     if (controls) controls.update();
     
-    // Always update animations even if game is paused
-    if (dancerMixer) {
-        dancerMixer.update(0.016); // Use fixed time step for consistent animation
-    }
+    // Update animations
+    if (dancerMixer) dancerMixer.update(timeStep);
     
     // Render scene
     renderer.render(scene, camera);
@@ -246,33 +231,18 @@ function update() {
 }
 
 function updateSmartCamera() {
-    // Significantly increased camera distance for zooming out further
-    const cameraDistance = 250;  
-    const cameraHeight = 120;    
+    // Simplified camera logic - focus mainly on the ball
+    const cameraDistance = 80;  
+    const cameraHeight = 40;    
     
     // Set dancer position to always be in front of the ball
     if (skyboxDancer) {
         skyboxDancer.position.set(
             ball.position.x, 
             0,  
-            ball.position.z - 100  
+            ball.position.z - 100 
         );
-        
-        // Ensure the dancer is visible by scaling it larger
-        skyboxDancer.scale.set(1.0, 1.0, 1.0);  
-        
-        skyboxDancer.lookAt(ball.position);
-        
-        // Update rainbow shader uniforms based on audio
-        skyboxDancer.traverse(child => {
-            if (child.isMesh && child.material && child.material.uniforms) {
-                child.material.uniforms.time.value = audioPlayer.currentTime * 0.5;
-                
-                // Get audio intensity - we'll use a simple sine wave if Web Audio API is not available
-                let audioIntensity = 0.5 + Math.sin(audioPlayer.currentTime * 2) * 0.5;
-                child.material.uniforms.intensity.value = audioIntensity;
-            }
-        });
+        skyboxDancer.lookAt(ball.position); 
     }
     
     // Position camera to see both ball and dancer
@@ -280,11 +250,11 @@ function updateSmartCamera() {
     camera.position.z = ball.position.z + Math.cos(cameraRotation) * cameraDistance;
     camera.position.y = ball.position.y + cameraHeight;
     
-    // Look at a point in between the ball and dancer
+    // Look slightly ahead of the ball toward the dancer
     const lookTarget = new THREE.Vector3(
         ball.position.x,
         ball.position.y,
-        ball.position.z - 30  
+        ball.position.z - 60  
     );
     camera.lookAt(lookTarget);
 }
@@ -295,6 +265,16 @@ function updateAudioVisualizers() {
     if (audioPlayer && audioPlayer.currentTime > 0) {
         // Simulate audio intensity based on currentTime for simple pulsing
         intensity = 0.3 + Math.sin(audioPlayer.currentTime * 2) * 0.2;
+    }
+    
+    // Update rainbow shader uniforms on the dancer
+    if (skyboxDancer) {
+        skyboxDancer.traverse(child => {
+            if (child.isMesh && child.material && child.material.uniforms) {
+                child.material.uniforms.time.value = audioPlayer.currentTime;
+                child.material.uniforms.audioIntensity.value = intensity;
+            }
+        });
     }
     
     audioVisualizers.forEach((visualizer, index) => {
@@ -323,10 +303,11 @@ function initGame() {
     ball = ballObj;
     ballBody = ballPhysicsBody;
     
-    // Changed to not auto-play
-    gameStarted = false;
-    fixedPauseBtn.classList.remove('playing');
-    fixedPauseBtn.classList.add('paused');
+    // Start the game automatically - no click needed
+    gameStarted = true;
+    audioPlayer.play();
+    fixedPauseBtn.classList.remove('paused');
+    fixedPauseBtn.classList.add('playing');
     
     // Add loading timeout
     const loadingTimeout = setTimeout(() => {

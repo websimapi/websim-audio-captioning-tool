@@ -23,60 +23,64 @@ async function loadSkyboxDancer(scene) {
             'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/models/fbx/Samba%20Dancing.fbx',
             (fbx) => {
                 const dancer = fbx;
-                dancer.scale.set(1.5, 1.5, 1.5); 
-                dancer.position.set(0, 0, -50);  
+                dancer.scale.set(0.05, 0.05, 0.05);  
+                dancer.position.set(0, 0, -100);  
                 
-                // Create rainbow shader material
-                const rainbowMaterial = new THREE.ShaderMaterial({
+                // Create shader material for rainbow effect
+                const rainbowShaderMaterial = new THREE.ShaderMaterial({
                     uniforms: {
-                        time: { value: 0.0 },
-                        intensity: { value: 0.5 }
+                        time: { value: 0 },
+                        audioIntensity: { value: 0.5 }
                     },
                     vertexShader: `
                         varying vec2 vUv;
+                        varying vec3 vPosition;
                         void main() {
                             vUv = uv;
+                            vPosition = position;
                             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
                         }
                     `,
                     fragmentShader: `
                         uniform float time;
-                        uniform float intensity;
+                        uniform float audioIntensity;
                         varying vec2 vUv;
-                        void main() {
-                            float i = intensity * 2.0;
-                            vec3 color = vec3(
-                                sin(vUv.x * 6.28 + time) * 0.5 + 0.5,
-                                sin(vUv.y * 6.28 + time + 2.09) * 0.5 + 0.5,
-                                sin((vUv.x + vUv.y) * 6.28 + time + 4.19) * 0.5 + 0.5
-                            );
-                            gl_FragColor = vec4(color * i, 1.0);
+                        varying vec3 vPosition;
+                        
+                        vec3 hsvToRgb(float h, float s, float v) {
+                            vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+                            vec3 p = abs(fract(vec3(h) + K.xyz) * 6.0 - K.www);
+                            return v * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), s);
                         }
-                    `,
-                    side: THREE.DoubleSide,
-                    wireframe: false
+                        
+                        void main() {
+                            float hue = mod(vPosition.y * 0.1 + time * 0.2, 1.0);
+                            float saturation = 0.7 + audioIntensity * 0.3;
+                            float value = 0.8 + audioIntensity * 0.2;
+                            
+                            vec3 color = hsvToRgb(hue, saturation, value);
+                            gl_FragColor = vec4(color, 1.0);
+                        }
+                    `
                 });
                 
                 dancer.traverse(child => {
                     if (child.isMesh) {
                         child.castShadow = true;
                         child.receiveShadow = true;
-                        child.material = rainbowMaterial.clone();
+                        // Apply the rainbow shader material
+                        child.material = rainbowShaderMaterial.clone();
                     }
                 });
                 
                 const mixer = new THREE.AnimationMixer(dancer);
                 
-                // Properly set up animation by checking available animations
-                if (fbx.animations && fbx.animations.length > 0) {
-                    const animation = fbx.animations[0];
-                    const action = mixer.clipAction(animation);
-                    action.setLoop(THREE.LoopRepeat);
-                    action.play();
-                    
-                    console.log("Animation loaded and playing:", animation.name);
-                } else {
-                    console.warn("No animations found in the model!");
+                if (dancer.animations.length > 0) {
+                    const dancingAnimation = mixer.clipAction(dancer.animations[0]);
+                    dancingAnimation.setLoop(THREE.LoopRepeat);
+                    dancingAnimation.clampWhenFinished = false;
+                    dancingAnimation.timeScale = 1.2; 
+                    dancingAnimation.play();
                 }
                 
                 scene.add(dancer);

@@ -1,0 +1,28 @@
+function updateSmartCamera() {
+    // Simplified camera logic - focus mainly on the ball
+    const cameraDistance = 120;  
+    const cameraHeight = 60;    
+    
+    // Set dancer position to always be in front of the ball
+    if (skyboxDancer) {
+        skyboxDancer.position.set(
+            ball.position.x, 
+            0,  
+            ball.position.z - 100 
+        );
+        skyboxDancer.lookAt(ball.position); 
+    }
+    
+    // Position camera to see both ball and dancer
+    camera.position.x = ball.position.x + Math.sin(cameraRotation) * cameraDistance;
+    camera.position.z = ball.position.z + Math.cos(cameraRotation) * cameraDistance;
+    camera.position.y = ball.position.y + cameraHeight;
+    
+    // Look slightly ahead of the ball toward the dancer
+    const lookTarget = new THREE.Vector3(
+        ball.position.x,
+        ball.position.y,
+        ball.position.z - 60  
+    );
+    camera.lookAt(lookTarget);
+}
