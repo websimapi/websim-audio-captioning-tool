@@ -232,17 +232,17 @@ function update() {
 
 function updateSmartCamera() {
     // Simplified camera logic - focus mainly on the ball
-    const cameraDistance = 50;
-    const cameraHeight = 30;
+    const cameraDistance = 80;  
+    const cameraHeight = 40;    
     
     // Set dancer position to always be in front of the ball
     if (skyboxDancer) {
         skyboxDancer.position.set(
             ball.position.x, 
             0,  
-            ball.position.z - 100 // Always 100 units in front of ball
+            ball.position.z - 100 
         );
-        skyboxDancer.lookAt(ball.position); // Make dancer face the ball
+        skyboxDancer.lookAt(ball.position); 
     }
     
     // Position camera to see both ball and dancer
@@ -254,7 +254,7 @@ function updateSmartCamera() {
     const lookTarget = new THREE.Vector3(
         ball.position.x,
         ball.position.y,
-        ball.position.z - 40
+        ball.position.z - 60  
     );
     camera.lookAt(lookTarget);
 }
@@ -287,7 +287,7 @@ function initGame() {
     // Create environment with infinite terrain instead of single ground
     terrainSystem = createInfiniteGround(scene, world);
     ballRadius = config.initialBallSize || 2;
-    ballMass = 5; // Lower mass for more responsive movement
+    ballMass = 5; 
     
     const { ball: ballObj, ballBody: ballPhysicsBody } = createBall(scene, world, ballRadius, ballMass);
     ball = ballObj;
@@ -305,7 +305,7 @@ function initGame() {
         document.getElementById('retryBtn').addEventListener('click', () => {
             window.location.reload();
         });
-    }, 15000); // 15 seconds timeout
+    }, 15000); 
     
     loadCharacters(scene).then(({ skyboxDancerObj, dancerMixerObj }) => {
         // Clear timeout since loading succeeded
