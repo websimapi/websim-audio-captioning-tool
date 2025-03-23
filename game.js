@@ -134,6 +134,23 @@ function setupEventListeners() {
         keys[e.key] = false;
     });
     
+    // Add click event to start game
+    document.addEventListener('click', function startOnFirstClick() {
+        if (!gameStarted) {
+            audioPlayer.play().then(() => {
+                gameStarted = true;
+                fixedPauseBtn.classList.remove('paused');
+                fixedPauseBtn.classList.add('playing');
+                loadingScreen.style.display = 'none';
+            }).catch(error => {
+                console.error("Error playing audio:", error);
+                loadingScreen.innerHTML = "Click again to start";
+            });
+        }
+        // Only needed once
+        document.removeEventListener('click', startOnFirstClick);
+    });
+    
     // Window resize
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
@@ -163,10 +180,6 @@ function togglePlayPause() {
         fixedPauseBtn.classList.add('paused');
         gameStarted = false;
     }
-}
-
-function startGame() {
-    // Removed start game function as the game starts automatically
 }
 
 function update() {
@@ -304,11 +317,10 @@ function initGame() {
     ball = ballObj;
     ballBody = ballPhysicsBody;
     
-    // Start the game automatically - no click needed
-    gameStarted = true;
-    audioPlayer.play();
-    fixedPauseBtn.classList.remove('paused');
-    fixedPauseBtn.classList.add('playing');
+    // Changed to not auto-play
+    gameStarted = false;
+    fixedPauseBtn.classList.remove('playing');
+    fixedPauseBtn.classList.add('paused');
     
     // Add loading timeout
     const loadingTimeout = setTimeout(() => {
