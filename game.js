@@ -255,9 +255,16 @@ async function initGame() {
     
     // Create environment with infinite terrain instead of single ground
     terrainSystem = createInfiniteGround(scene, world);
+    ballRadius = config.initialBallSize || 2;
+    ballMass = 5; // Lower mass for more responsive movement
+    
     const { ball: ballObj, ballBody: ballPhysicsBody } = createBall(scene, world, ballRadius, ballMass);
     ball = ballObj;
     ballBody = ballPhysicsBody;
+    
+    // Adjust physics parameters for better control
+    ballBody.linearDamping = 0.2;
+    ballBody.angularDamping = 0.5;
     
     // Add loading timeout
     const loadingTimeout = setTimeout(() => {

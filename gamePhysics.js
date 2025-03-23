@@ -108,24 +108,34 @@ export function createHumans(scene, world, humans, humanBodies) {
 }
 
 export function updateBallMovement(ballBody, keys) {
-    const force = 3000;  // Increased force for faster movement
+    // Reset velocity for more direct control
+    const maxSpeed = 30; // Higher max speed
+    const force = 500;  // Increased force for faster movement
+    const dampingFactor = 0.95; // Damping to prevent excessive sliding
+
+    // Set velocities directly based on key presses
+    const currentVelX = ballBody.velocity.x * dampingFactor;
+    const currentVelZ = ballBody.velocity.z * dampingFactor;
     
-    if (keys['w']) {
-        ballBody.applyLocalForce(new CANNON.Vec3(0, 0, -force));
-    }
-    if (keys['s']) {
-        ballBody.applyLocalForce(new CANNON.Vec3(0, 0, force));
-    }
-    if (keys['a']) {
-        ballBody.applyLocalForce(new CANNON.Vec3(-force, 0, 0));
-    }
-    if (keys['d']) {
-        ballBody.applyLocalForce(new CANNON.Vec3(force, 0, 0));
-    }
+    let targetVelX = currentVelX;
+    let targetVelZ = currentVelZ;
+    
+    if (keys['w'] || keys['W']) targetVelZ -= force * timeStep;
+    if (keys['s'] || keys['S']) targetVelZ += force * timeStep;
+    if (keys['a'] || keys['A']) targetVelX -= force * timeStep;
+    if (keys['d'] || keys['D']) targetVelX += force * timeStep;
+    
+    // Clamp max speed
+    targetVelX = Math.max(-maxSpeed, Math.min(maxSpeed, targetVelX));
+    targetVelZ = Math.max(-maxSpeed, Math.min(maxSpeed, targetVelZ));
+    
+    // Apply the velocities
+    ballBody.velocity.x = targetVelX;
+    ballBody.velocity.z = targetVelZ;
     
     // Add a small upward force when spacebar is pressed for a simple jump
-    if (keys[' ']) {
-        ballBody.applyLocalForce(new CANNON.Vec3(0, force * 2, 0));
+    if (keys[' '] && Math.abs(ballBody.velocity.y) < 0.1) {
+        ballBody.velocity.y = 20; // Jump force
     }
 }
 
