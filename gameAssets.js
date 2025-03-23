@@ -23,7 +23,7 @@ async function loadSkyboxDancer(scene) {
             'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/models/fbx/Samba%20Dancing.fbx',
             (fbx) => {
                 const dancer = fbx;
-                dancer.scale.set(0.2, 0.2, 0.2); 
+                dancer.scale.set(1.5, 1.5, 1.5); 
                 dancer.position.set(0, 0, -50);  
                 
                 // Create rainbow shader material
@@ -67,10 +67,17 @@ async function loadSkyboxDancer(scene) {
                 
                 const mixer = new THREE.AnimationMixer(dancer);
                 
-                // Fix animation by explicitly creating and playing it
-                const clipAction = mixer.clipAction(fbx.animations[0]);
-                clipAction.setEffectiveTimeScale(1.0);
-                clipAction.play();
+                // Properly set up animation by checking available animations
+                if (fbx.animations && fbx.animations.length > 0) {
+                    const animation = fbx.animations[0];
+                    const action = mixer.clipAction(animation);
+                    action.setLoop(THREE.LoopRepeat);
+                    action.play();
+                    
+                    console.log("Animation loaded and playing:", animation.name);
+                } else {
+                    console.warn("No animations found in the model!");
+                }
                 
                 scene.add(dancer);
                 resolve({ dancer, mixer });

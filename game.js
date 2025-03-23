@@ -233,8 +233,10 @@ function update() {
     // Update controls
     if (controls) controls.update();
     
-    // Update animations
-    if (dancerMixer) dancerMixer.update(timeStep);
+    // Always update animations even if game is paused
+    if (dancerMixer) {
+        dancerMixer.update(0.016); // Use fixed time step for consistent animation
+    }
     
     // Render scene
     renderer.render(scene, camera);
