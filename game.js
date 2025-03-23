@@ -155,14 +155,27 @@ function togglePlayPause() {
 
 function startGame() {
     if (!gameStarted) {
-        if (loadingScreen.style.display !== 'none') {
+        if (loadingScreen && loadingScreen.style.display !== 'none') {
             loadingScreen.style.display = 'none';
         }
         
-        audioPlayer.play();
-        gameStarted = true;
-        fixedPauseBtn.classList.remove('paused');
-        fixedPauseBtn.classList.add('playing');
+        if (audioPlayer) {
+            audioPlayer.play()
+                .then(() => {
+                    gameStarted = true;
+                    if (fixedPauseBtn) {
+                        fixedPauseBtn.classList.remove('paused');
+                        fixedPauseBtn.classList.add('playing');
+                    }
+                })
+                .catch(err => {
+                    console.error("Could not play audio:", err);
+                    // Still mark the game as started even if audio fails
+                    gameStarted = true;
+                });
+        } else {
+            gameStarted = true;
+        }
     }
 }
 
