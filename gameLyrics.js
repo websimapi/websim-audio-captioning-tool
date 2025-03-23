@@ -51,6 +51,7 @@ export function updateLyrics(currentTime, predefinedCaptions, currentCaption, ac
 }
 
 export function updateLyricsDisplay(caption, lyricsContainer) {
+    // Clear previous content
     lyricsContainer.innerHTML = '';
     
     if (!caption) return;
@@ -63,25 +64,23 @@ export function updateLyricsDisplay(caption, lyricsContainer) {
         wordElement.id = `word-${index}`;
         wordElement.textContent = word;
         
-        // Assign more visible colors with better contrast
+        // Assign random colors to each word for vibrant appearance
         const hue = Math.floor(Math.random() * 360);
-        wordElement.style.backgroundColor = `hsla(${hue}, 80%, 60%, 0.7)`;
-        wordElement.style.color = `white`;
-        wordElement.style.textShadow = `0 0 6px rgba(0, 0, 0, 0.8), 0 0 10px hsla(${hue}, 100%, 70%, 1)`;
+        wordElement.style.backgroundColor = `hsla(${hue}, 80%, 60%, 0.6)`;
+        wordElement.style.color = `hsl(${hue}, 100%, 90%)`;
+        wordElement.style.textShadow = `0 0 5px hsla(${hue}, 100%, 70%, 1)`;
         
         lyricsContainer.appendChild(wordElement);
         
-        // Add space between words except for last word
-        if (index < words.length - 1) {
-            lyricsContainer.appendChild(document.createTextNode(' '));
-        }
-        
         // Add animation to make words appear with a delay
         setTimeout(() => {
-            wordElement.style.opacity = '1';
+            wordElement.style.opacity = '0.8';
             wordElement.style.transform = 'scale(1)';
         }, index * 50);
     });
+    
+    // Make lyrics container visible
+    lyricsContainer.style.display = 'block';
 }
 
 export function create3DWord(word, index, scene, dancer) {

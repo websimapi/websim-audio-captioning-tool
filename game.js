@@ -13,6 +13,9 @@ let controls;
 let keys = {};
 let gameStarted = false;
 let cameraRotation = 0;
+let cameraHeight = 30;
+let beatDetected = false;
+let lastBeatTime = 0;
 
 // Audio and lyrics variables
 const audioPlayer = document.getElementById('audioPlayer');
@@ -104,10 +107,6 @@ function setupEventListeners() {
     // Start game button
     startGameBtn.addEventListener('click', () => {
         gameStarted = true;
-        audioPlayer.play();
-        fixedPauseBtn.classList.remove('paused');
-        fixedPauseBtn.classList.add('playing');
-        loadingScreen.style.display = 'none';
     });
     
     // Play/Pause button
@@ -139,18 +138,8 @@ function update() {
             cameraRotation -= 0.02;
         }
         
-        // Update lyrics display
-        if (audioPlayer && !audioPlayer.paused) {
-            const { currentCaption, activeWords } = updateLyrics(
-                audioPlayer.currentTime, 
-                config.predefinedCaptions, 
-                null, 
-                [], 
-                lyricsContainer, 
-                scene, 
-                skyboxDancer
-            );
-        }
+        // Update lyrics display with proper parameters
+        updateLyrics(audioPlayer.currentTime, config.predefinedCaptions, null, [], lyricsContainer, scene, skyboxDancer);
         
         // Position dancer in the center
         positionDancerInCenter();
@@ -175,15 +164,40 @@ function update() {
 function updateCameraPosition() {
     // Orbit camera around dancer if it exists
     if (skyboxDancer) {
-        const cameraDistance = 50;
-        const cameraHeight = 30;
+        const cameraDistance = 50 + Math.sin(Date.now() * 0.001) * 10; // Add breathing motion
         const dancerPos = skyboxDancer.position;
         
+        // Detect beat for camera movement (simple time-based approach)
+        const currentTime = audioPlayer.currentTime;
+        const beatInterval = 0.5; // Assume 120 BPM (1 beat every 0.5 seconds)
+        
+        if (currentTime - lastBeatTime >= beatInterval) {
+            beatDetected = true;
+            lastBeatTime = currentTime - (currentTime % beatInterval);
+            
+            // Add some randomness to camera angle on beats
+            cameraRotation += (Math.random() * 0.1 - 0.05);
+            cameraHeight = 30 + Math.random() * 5;
+        } else {
+            beatDetected = false;
+        }
+        
         if (!controls.enabled) {
+            // Apply smoother camera motion with beat reactions
             camera.position.x = dancerPos.x + Math.sin(cameraRotation) * cameraDistance;
             camera.position.z = dancerPos.z + Math.cos(cameraRotation) * cameraDistance;
             camera.position.y = dancerPos.y + cameraHeight;
+            
+            // If beat detected, add a slight bounce effect
+            if (beatDetected) {
+                camera.position.y += Math.sin(Date.now() * 0.01) * 2;
+            }
+            
+            // Always look at dancer
             camera.lookAt(dancerPos);
+            
+            // Slowly rotate camera around dancer
+            cameraRotation += 0.002;
         }
     }
 }
@@ -236,6 +250,11 @@ async function initGame() {
         
         // Hide loading screen when all assets are loaded
         loadingScreen.style.display = 'none';
+        
+        // Set initial camera position looking at dancer
+        camera.position.set(0, 30, 50);
+        camera.lookAt(0, 0, 0);
+        controls.enabled = false; // Disable free camera to use animated camera
         
         // Setup event listeners
         setupEventListeners();
