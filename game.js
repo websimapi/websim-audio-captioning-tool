@@ -245,16 +245,20 @@ function update() {
 
 function updateSmartCamera() {
     // Significantly increased camera distance for zooming out further
-    const cameraDistance = 150;  
-    const cameraHeight = 80;    
+    const cameraDistance = 200;  
+    const cameraHeight = 100;    
     
     // Set dancer position to always be in front of the ball
     if (skyboxDancer) {
         skyboxDancer.position.set(
             ball.position.x, 
             0,  
-            ball.position.z - 100 
+            ball.position.z - 50  
         );
+        
+        // Ensure the dancer is visible by scaling it larger
+        skyboxDancer.scale.set(0.05, 0.05, 0.05);
+        
         skyboxDancer.lookAt(ball.position);
         
         // Update rainbow shader uniforms based on audio
@@ -274,11 +278,11 @@ function updateSmartCamera() {
     camera.position.z = ball.position.z + Math.cos(cameraRotation) * cameraDistance;
     camera.position.y = ball.position.y + cameraHeight;
     
-    // Look slightly ahead of the ball toward the dancer
+    // Look at a point in between the ball and dancer
     const lookTarget = new THREE.Vector3(
         ball.position.x,
         ball.position.y,
-        ball.position.z - 60  
+        ball.position.z - 30  
     );
     camera.lookAt(lookTarget);
 }

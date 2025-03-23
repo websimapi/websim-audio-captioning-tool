@@ -23,8 +23,8 @@ async function loadSkyboxDancer(scene) {
             'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/models/fbx/Samba%20Dancing.fbx',
             (fbx) => {
                 const dancer = fbx;
-                dancer.scale.set(0.016, 0.016, 0.016); 
-                dancer.position.set(0, 0, -100);  
+                dancer.scale.set(0.05, 0.05, 0.05); 
+                dancer.position.set(0, 0, -50);  
                 
                 // Create rainbow shader material
                 const rainbowMaterial = new THREE.ShaderMaterial({
