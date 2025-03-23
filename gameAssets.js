@@ -67,13 +67,10 @@ async function loadSkyboxDancer(scene) {
                 
                 const mixer = new THREE.AnimationMixer(dancer);
                 
-                if (dancer.animations.length > 0) {
-                    const dancingAnimation = mixer.clipAction(dancer.animations[0]);
-                    dancingAnimation.setLoop(THREE.LoopRepeat);
-                    dancingAnimation.clampWhenFinished = false;
-                    dancingAnimation.timeScale = 1.5; 
-                    dancingAnimation.play();
-                }
+                // Fix animation by explicitly creating and playing it
+                const clipAction = mixer.clipAction(fbx.animations[0]);
+                clipAction.setEffectiveTimeScale(1.0);
+                clipAction.play();
                 
                 scene.add(dancer);
                 resolve({ dancer, mixer });

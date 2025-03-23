@@ -257,7 +257,7 @@ function updateSmartCamera() {
         );
         
         // Ensure the dancer is visible by scaling it larger
-        skyboxDancer.scale.set(0.2, 0.2, 0.2);
+        skyboxDancer.scale.set(1.0, 1.0, 1.0);  
         
         skyboxDancer.lookAt(ball.position);
         
