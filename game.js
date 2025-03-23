@@ -307,10 +307,7 @@ function initGame() {
         });
     }, 15000); // 15 seconds timeout
     
-    try {
-        // Load only the dancer character, skipping the running human
-        const { skyboxDancerObj, dancerMixerObj } = await loadCharacters(scene);
-        
+    loadCharacters(scene).then(({ skyboxDancerObj, dancerMixerObj }) => {
         // Clear timeout since loading succeeded
         clearTimeout(loadingTimeout);
         
@@ -326,14 +323,14 @@ function initGame() {
         
         // Start game loop
         update();
-    } catch (error) {
+    }).catch(error => {
         clearTimeout(loadingTimeout);
         console.error("Error initializing game:", error);
         loadingScreen.innerHTML = `Error loading game: ${error.message}<br><button id="retryBtn">Retry</button>`;
         document.getElementById('retryBtn').addEventListener('click', () => {
             window.location.reload();
         });
-    }
+    });
 }
 
 // Start the game when the page loads
