@@ -108,30 +108,34 @@ export function createHumans(scene, world, humans, humanBodies) {
 }
 
 export function updateBallMovement(ballBody, keys) {
-    // Reset velocity for more direct control
-    const maxSpeed = 30; // Higher max speed
-    const force = 500;  // Increased force for faster movement
-    const dampingFactor = 0.95; // Damping to prevent excessive sliding
-
-    // Set velocities directly based on key presses
-    const currentVelX = ballBody.velocity.x * dampingFactor;
-    const currentVelZ = ballBody.velocity.z * dampingFactor;
+    // Improved movement with better physics feel
+    const maxSpeed = 40; // Higher max speed
+    const force = 600;  // Increased force for faster movement
+    const dampingFactor = 0.92; // Slightly less damping for smoother movement
     
-    let targetVelX = currentVelX;
-    let targetVelZ = currentVelZ;
+    // Apply damping to current velocity
+    ballBody.velocity.x *= dampingFactor;
+    ballBody.velocity.z *= dampingFactor;
     
-    if (keys['w'] || keys['W']) targetVelZ -= force * timeStep;
-    if (keys['s'] || keys['S']) targetVelZ += force * timeStep;
-    if (keys['a'] || keys['A']) targetVelX -= force * timeStep;
-    if (keys['d'] || keys['D']) targetVelX += force * timeStep;
+    // Calculate forces based on key presses
+    let forceX = 0;
+    let forceZ = 0;
+    
+    if (keys['w'] || keys['W']) forceZ -= force;
+    if (keys['s'] || keys['S']) forceZ += force;
+    if (keys['a'] || keys['A']) forceX -= force;
+    if (keys['d'] || keys['D']) forceX += force;
+    
+    // Apply forces
+    ballBody.applyLocalForce(new CANNON.Vec3(forceX * timeStep, 0, forceZ * timeStep), new CANNON.Vec3(0, 0, 0));
     
     // Clamp max speed
-    targetVelX = Math.max(-maxSpeed, Math.min(maxSpeed, targetVelX));
-    targetVelZ = Math.max(-maxSpeed, Math.min(maxSpeed, targetVelZ));
-    
-    // Apply the velocities
-    ballBody.velocity.x = targetVelX;
-    ballBody.velocity.z = targetVelZ;
+    const currentSpeedSq = ballBody.velocity.x * ballBody.velocity.x + ballBody.velocity.z * ballBody.velocity.z;
+    if (currentSpeedSq > maxSpeed * maxSpeed) {
+        const currentSpeed = Math.sqrt(currentSpeedSq);
+        ballBody.velocity.x = (ballBody.velocity.x / currentSpeed) * maxSpeed;
+        ballBody.velocity.z = (ballBody.velocity.z / currentSpeed) * maxSpeed;
+    }
     
     // Add a small upward force when spacebar is pressed for a simple jump
     if (keys[' '] && Math.abs(ballBody.velocity.y) < 0.1) {
@@ -251,7 +255,7 @@ export function createAttachmentEffect(position, scene) {
 export function createInfiniteGround(scene, world, chunkSize = 100, renderDistance = 4) {
     const groundChunks = new Map(); // Store chunks by their coordinates
     
-    // Create more colorful ground materials
+    // Create more colorful ground materials with gradients
     const groundMaterials = [
         new THREE.MeshStandardMaterial({ color: 0xFFD6E0, roughness: 0.7, metalness: 0.1 }), // Pink
         new THREE.MeshStandardMaterial({ color: 0xA2D2FF, roughness: 0.7, metalness: 0.1 }), // Light blue
@@ -274,7 +278,7 @@ export function createInfiniteGround(scene, world, chunkSize = 100, renderDistan
         const groundGeometry = new THREE.PlaneGeometry(chunkSize, chunkSize, 1, 1);
         const ground = new THREE.Mesh(groundGeometry, material);
         ground.rotation.x = -Math.PI / 2;
-        ground.position.set(x * chunkSize, 0, z * chunkSize);
+        ground.position.set(x * chunkSize, -1, z * chunkSize); // Lower the ground slightly
         ground.receiveShadow = true;
         scene.add(ground);
         
@@ -284,7 +288,7 @@ export function createInfiniteGround(scene, world, chunkSize = 100, renderDistan
             type: CANNON.Body.STATIC,
             shape: groundShape
         });
-        groundBody.position.set(x * chunkSize, -0.1, z * chunkSize);
+        groundBody.position.set(x * chunkSize, -1.1, z * chunkSize); // Match visual position
         world.addBody(groundBody);
         
         // Store the chunk

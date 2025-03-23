@@ -23,15 +23,15 @@ async function loadSkyboxDancer(scene) {
             'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/models/fbx/Samba%20Dancing.fbx',
             (fbx) => {
                 const dancer = fbx;
-                dancer.scale.set(0.05, 0.05, 0.05);  
-                dancer.position.set(0, 0, -200);  
+                dancer.scale.set(0.04, 0.04, 0.04); 
+                dancer.position.set(0, 0, -150);  
                 dancer.traverse(child => {
                     if (child.isMesh) {
                         child.castShadow = true;
                         child.receiveShadow = true;
                         if (child.material) {
-                            child.material.emissive = new THREE.Color(0x303030);
-                            child.material.emissiveIntensity = 0.5;
+                            child.material.emissive = new THREE.Color(0x404040);
+                            child.material.emissiveIntensity = 0.7; 
                         }
                     }
                 });
@@ -55,9 +55,13 @@ async function loadSkyboxDancer(scene) {
             (error) => {
                 console.error("Error loading dancer model:", error);
                 const geometry = new THREE.BoxGeometry(2, 4, 2);
-                const material = new THREE.MeshBasicMaterial({ color: 0xff00ff, emissive: 0x303030 });
+                const material = new THREE.MeshBasicMaterial({ 
+                    color: 0xff00ff, 
+                    emissive: 0x404040,
+                    emissiveIntensity: 0.7
+                });
                 const dancer = new THREE.Mesh(geometry, material);
-                dancer.position.set(0, 0, -200);
+                dancer.position.set(0, 0, -150);
                 scene.add(dancer);
                 resolve({ dancer, mixer: new THREE.AnimationMixer(dancer) });
             }

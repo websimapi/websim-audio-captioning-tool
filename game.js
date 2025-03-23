@@ -20,7 +20,7 @@ let ballRadius = 2;
 let ballMass = 10;
 let gameStarted = false;
 let cameraRotation = 0;
-let musicVisualizers = [];
+let audioVisualizers = [];
 
 // Audio and lyrics variables
 const audioPlayer = document.getElementById('audioPlayer');
@@ -77,47 +77,55 @@ function initScene() {
 }
 
 function createSkybox() {
+    // Remove boxed skybox and replace with a simpler gradient background
     scene.background = new THREE.Color(0xA2D2FF);
-    scene.fog = new THREE.FogExp2(0xB5EAEA, 0.005);
+    scene.fog = new THREE.FogExp2(0xA2D2FF, 0.002);
     
+    // Create music visualizers in the background
     createMusicVisualizers();
 }
 
 function createMusicVisualizers() {
-    const radius = 250;
-    const visualizerCount = 8;
+    // Create 5 audio visualizer rings at different positions
+    const visualizerCount = 5;
+    const colors = [0xFF6B6B, 0xFFD6E0, 0x64DFDF, 0xC8FFD4, 0xFFC8FB];
     
     for (let i = 0; i < visualizerCount; i++) {
-        const angle = (i / visualizerCount) * Math.PI * 2;
-        const x = Math.cos(angle) * radius;
-        const z = Math.sin(angle) * radius;
+        // Create ring geometry
+        const radius = 80 + i * 40;
+        const tube = 2;
+        const radialSegments = 16;
+        const tubularSegments = 100;
+        const geometry = new THREE.TorusGeometry(radius, tube, radialSegments, tubularSegments);
         
-        const geometry = new THREE.TorusGeometry(20, 2, 16, 100);
-        const material = new THREE.MeshStandardMaterial({ 
-            color: new THREE.Color().setHSL(i / visualizerCount, 0.8, 0.5),
-            emissive: new THREE.Color().setHSL(i / visualizerCount, 0.9, 0.3),
-            emissiveIntensity: 1.5,
-            metalness: 0.8,
-            roughness: 0.2
+        // Create material with glow effect
+        const material = new THREE.MeshStandardMaterial({
+            color: colors[i],
+            emissive: colors[i],
+            emissiveIntensity: 0.5,
+            transparent: true,
+            opacity: 0.7
         });
         
+        // Create mesh
         const visualizer = new THREE.Mesh(geometry, material);
-        visualizer.position.set(x, 50, z);
         visualizer.rotation.x = Math.PI / 2;
-        visualizer.scale.set(1, 1, 1);
-        scene.add(visualizer);
+        visualizer.position.y = -50 + i * 20;
+        visualizer.position.z = -300;
         
-        musicVisualizers.push({
+        // Add to scene and visualizers array
+        scene.add(visualizer);
+        audioVisualizers.push({
             mesh: visualizer,
-            baseScale: 1,
-            pulseSpeed: 0.5 + Math.random() * 0.5,
-            pulseOffset: i * (Math.PI / 4),
-            rotationSpeed: 0.01 + (Math.random() * 0.02)
+            originalScale: visualizer.scale.clone(),
+            phase: Math.random() * Math.PI * 2,
+            speed: 0.5 + Math.random()
         });
     }
 }
 
 function setupEventListeners() {
+    // Keyboard controls
     window.addEventListener('keydown', (e) => {
         keys[e.key] = true;
     });
@@ -126,16 +134,20 @@ function setupEventListeners() {
         keys[e.key] = false;
     });
     
+    // Window resize
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
     });
     
+    // Play/Pause button
     fixedPauseBtn.addEventListener('click', togglePlayPause);
     
+    // Audio player events
     audioPlayer.addEventListener('ended', () => {
         gameStarted = false;
+        // Show results or restart option
     });
 }
 
@@ -155,36 +167,28 @@ function togglePlayPause() {
 
 function startGame() {
     if (!gameStarted) {
-        if (loadingScreen && loadingScreen.style.display !== 'none') {
+        // If we're still stuck in loading, offer simplified game
+        if (loadingScreen.style.display !== 'none') {
+            // Hide loading screen and start with simplified graphics
             loadingScreen.style.display = 'none';
         }
         
-        if (audioPlayer) {
-            audioPlayer.play()
-                .then(() => {
-                    gameStarted = true;
-                    if (fixedPauseBtn) {
-                        fixedPauseBtn.classList.remove('paused');
-                        fixedPauseBtn.classList.add('playing');
-                    }
-                })
-                .catch(err => {
-                    console.error("Could not play audio:", err);
-                    // Still mark the game as started even if audio fails
-                    gameStarted = true;
-                });
-        } else {
-            gameStarted = true;
-        }
+        audioPlayer.play();
+        gameStarted = true;
+        fixedPauseBtn.classList.remove('paused');
+        fixedPauseBtn.classList.add('playing');
     }
 }
 
 function update() {
     if (gameStarted) {
+        // Update physics
         world.step(timeStep);
         
+        // Update player movement
         updateBallMovement(ballBody, keys);
         
+        // Handle camera rotation with arrow keys
         if (keys['ArrowLeft']) {
             cameraRotation += 0.02;
         }
@@ -192,9 +196,11 @@ function update() {
             cameraRotation -= 0.02;
         }
         
+        // Update ball position from physics
         ball.position.copy(ballBody.position);
         ball.quaternion.copy(ballBody.quaternion);
         
+        // Update humans position from physics
         humans.forEach((human, index) => {
             if (!human.attached) {
                 human.mesh.position.copy(human.body.position);
@@ -202,154 +208,159 @@ function update() {
             }
         });
         
+        // Update terrain chunks based on player position
         if (terrainSystem && ball) {
             terrainSystem.updateChunks(ball.position);
         }
         
+        // Update attached objects
         updateAttachedObjects(attachedObjects, ball);
         
+        // Update lyrics display
         updateLyrics(audioPlayer.currentTime, config.predefinedCaptions, currentCaption, activeWords, lyricsContainer, scene, ball);
         
-        updateMusicVisualizers(audioPlayer.currentTime);
+        // Update audio visualizers
+        updateAudioVisualizers();
     }
     
+    // Update camera to follow the ball and keep dancer in view
     if (ball && skyboxDancer) {
-        const midpoint = new THREE.Vector3();
-        midpoint.addVectors(ball.position, skyboxDancer.position).multiplyScalar(0.5);
-        
-        const distance = ball.position.distanceTo(skyboxDancer.position);
-        
-        const cameraDistance = Math.max(80, distance * 0.8);
-        const cameraHeight = Math.max(40, distance * 0.4);
-        
-        camera.position.x = midpoint.x + Math.sin(cameraRotation) * cameraDistance;
-        camera.position.z = midpoint.z + Math.cos(cameraRotation) * cameraDistance;
-        camera.position.y = midpoint.y + cameraHeight;
-        
-        camera.lookAt(midpoint);
+        updateSmartCamera();
     }
     
+    // Update controls
     if (controls) controls.update();
     
+    // Update animations
     if (dancerMixer) dancerMixer.update(timeStep);
     
+    // Render scene
     renderer.render(scene, camera);
     
+    // Request next frame
     requestAnimationFrame(update);
 }
 
-function updateMusicVisualizers(currentTime) {
-    if (!audioPlayer || audioPlayer.paused) return;
+function updateSmartCamera() {
+    // Calculate midpoint between ball and dancer
+    const midpoint = new THREE.Vector3().addVectors(
+        ball.position, 
+        skyboxDancer.position
+    ).multiplyScalar(0.5);
     
-    if (!window.audioContext) {
-        try {
-            window.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            window.audioAnalyser = window.audioContext.createAnalyser();
-            window.audioAnalyser.fftSize = 64;
-            
-            const source = window.audioContext.createMediaElementSource(audioPlayer);
-            source.connect(window.audioAnalyser);
-            window.audioAnalyser.connect(window.audioContext.destination);
-            
-            window.frequencyData = new Uint8Array(window.audioAnalyser.frequencyBinCount);
-        } catch (e) {
-            console.error("Web Audio API not supported:", e);
-        }
+    // Calculate distance between ball and dancer
+    const distance = ball.position.distanceTo(skyboxDancer.position);
+    
+    // Set camera position based on midpoint, distance, and camera rotation
+    const cameraDistance = Math.max(distance * 0.8, 80);
+    const cameraHeight = cameraDistance * 0.6;
+    
+    camera.position.x = midpoint.x + Math.sin(cameraRotation) * cameraDistance;
+    camera.position.z = midpoint.z + Math.cos(cameraRotation) * cameraDistance;
+    camera.position.y = midpoint.y + cameraHeight;
+    
+    // Look at midpoint
+    camera.lookAt(midpoint);
+}
+
+function updateAudioVisualizers() {
+    // Get audio data if available
+    let intensity = 0.5;
+    if (audioPlayer && audioPlayer.currentTime > 0) {
+        // Simulate audio intensity based on currentTime for simple pulsing
+        intensity = 0.3 + Math.sin(audioPlayer.currentTime * 2) * 0.2;
     }
     
-    if (window.audioAnalyser && window.frequencyData) {
-        window.audioAnalyser.getByteFrequencyData(window.frequencyData);
+    audioVisualizers.forEach((visualizer, index) => {
+        // Update scale based on audio intensity and unique phase
+        const pulse = Math.sin(audioPlayer.currentTime * visualizer.speed + visualizer.phase) * 0.2 + 0.8;
+        const targetScale = visualizer.originalScale.clone().multiplyScalar(pulse * intensity);
         
-        musicVisualizers.forEach((visualizer, index) => {
-            const freqIndex = Math.floor(index * (window.frequencyData.length / musicVisualizers.length));
-            const value = window.frequencyData[freqIndex] / 255;
-            
-            const pulseAmount = 1 + value * 2;
-            visualizer.mesh.scale.set(
-                visualizer.baseScale * pulseAmount,
-                visualizer.baseScale * pulseAmount,
-                visualizer.baseScale
-            );
-            
-            visualizer.mesh.rotation.z += visualizer.rotationSpeed * (1 + value);
-            
-            visualizer.mesh.material.emissiveIntensity = 1 + value * 2;
-            visualizer.mesh.material.color.setHSL(
-                (index / musicVisualizers.length + currentTime * 0.05) % 1, 
-                0.8, 
-                0.4 + value * 0.6
-            );
-        });
-    } else {
-        musicVisualizers.forEach((visualizer, index) => {
-            const pulse = Math.sin(currentTime * visualizer.pulseSpeed + visualizer.pulseOffset);
-            const scale = visualizer.baseScale * (1 + 0.2 * pulse);
-            visualizer.mesh.scale.set(scale, scale, visualizer.baseScale);
-            visualizer.mesh.rotation.z += visualizer.rotationSpeed;
-        });
-    }
+        // Rotate visualizer
+        visualizer.mesh.rotation.z += 0.002 * (index + 1);
+        
+        // Apply scale
+        visualizer.mesh.scale.lerp(targetScale, 0.1);
+    });
 }
 
 function updateDancerPosition() {
-    if (skyboxDancer && camera && ball) {
-        const distanceFromBall = 150;
-        const fixedHeight = 20;
-        
+    if (skyboxDancer && camera) {
+        // Get current camera direction
         const cameraDirection = new THREE.Vector3();
         camera.getWorldDirection(cameraDirection);
-        cameraDirection.y = 0; 
-        cameraDirection.normalize();
         
-        const targetPosition = new THREE.Vector3();
-        targetPosition.copy(ball.position).add(cameraDirection.multiplyScalar(distanceFromBall));
-        targetPosition.y = fixedHeight;
+        // Calculate position relative to ball position
+        const distanceFromBall = 150;
+        const angleOffset = Math.PI / 4; // 45 degrees offset
         
-        skyboxDancer.position.lerp(targetPosition, 0.05);
+        // Calculate position in front of the ball, offset by angle
+        const targetPosition = new THREE.Vector3(
+            ball.position.x + Math.sin(cameraRotation + angleOffset) * distanceFromBall,
+            0,
+            ball.position.z + Math.cos(cameraRotation + angleOffset) * distanceFromBall
+        );
         
+        // Smoothly move dancer to the target position (lerp)
+        skyboxDancer.position.lerp(targetPosition, 0.02);
+        
+        // Make dancer face the ball
         skyboxDancer.lookAt(ball.position);
         
-        if (dancerMixer && dancerMixer._actions && dancerMixer._actions.length > 0) {
-            const action = dancerMixer._actions[0];
-            if (!action.isRunning()) {
+        // Ensure the dancer is always dancing by checking animation
+        if (dancerMixer && dancerMixer.clipAction) {
+            const action = dancerMixer.clipAction(skyboxDancer.animations[0]);
+            if (action && !action.isRunning()) {
                 action.play();
             }
         }
     }
 }
 
+// Initialize game
 async function initGame() {
+    // Initialize scene
     initScene();
     
+    // Create environment with infinite terrain instead of single ground
     terrainSystem = createInfiniteGround(scene, world);
     ballRadius = config.initialBallSize || 2;
-    ballMass = 5; 
+    ballMass = 5; // Lower mass for more responsive movement
     
     const { ball: ballObj, ballBody: ballPhysicsBody } = createBall(scene, world, ballRadius, ballMass);
     ball = ballObj;
     ballBody = ballPhysicsBody;
     
+    // Adjust physics parameters for better control
     ballBody.linearDamping = 0.2;
     ballBody.angularDamping = 0.5;
     
+    // Add loading timeout
     const loadingTimeout = setTimeout(() => {
         loadingScreen.innerHTML = 'Loading taking too long. <button id="retryBtn">Retry</button>';
         document.getElementById('retryBtn').addEventListener('click', () => {
             window.location.reload();
         });
-    }, 15000); 
+    }, 15000); // 15 seconds timeout
     
     try {
+        // Load only the dancer character, skipping the running human
         const { skyboxDancerObj, dancerMixerObj } = await loadCharacters(scene);
         
+        // Clear timeout since loading succeeded
         clearTimeout(loadingTimeout);
         
+        // Assign loaded objects
         skyboxDancer = skyboxDancerObj;
         dancerMixer = dancerMixerObj;
         
+        // Hide loading screen when all assets are loaded
         loadingScreen.style.display = 'none';
         
+        // Setup event listeners
         setupEventListeners();
         
+        // Start game loop
         update();
     } catch (error) {
         clearTimeout(loadingTimeout);
@@ -361,8 +372,10 @@ async function initGame() {
     }
 }
 
+// Start the game when the page loads
 window.addEventListener('DOMContentLoaded', initGame);
 
+// Export game objects for other modules
 export { 
     scene, camera, renderer, ball, ballBody, humans, humanBodies, 
     skyboxDancer, dancerMixer, controls, attachedObjects, terrainSystem

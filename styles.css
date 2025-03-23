@@ -66,12 +66,10 @@ body {
 
 .lyric-word {
     display: inline-block;
-    font-size: 28px;
+    font-size: 24px;
     font-weight: bold;
     color: white;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7),
-                 0 0 10px rgba(255, 255, 255, 0.5),
-                 0 0 20px rgba(255, 255, 255, 0.3);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
     margin: 0 5px;
     padding: 5px;
     border-radius: 5px;
@@ -83,12 +81,6 @@ body {
 .lyric-word.active {
     opacity: 1;
     transform: scale(1.2);
-    animation: pulsate 0.5s infinite alternate;
-}
-
-@keyframes pulsate {
-    0% { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7), 0 0 10px rgba(255, 255, 255, 0.5); }
-    100% { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7), 0 0 20px rgba(255, 255, 255, 0.8), 0 0 30px rgba(255, 255, 255, 0.6); }
 }
 
 .hidden {

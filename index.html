@@ -22,50 +22,13 @@
     </div>
     
     <div id="audio-controls">
-        <audio id="audioPlayer" src="/UwU Doki Doki.wav" preload="auto" crossorigin="anonymous"></audio>
+        <audio id="audioPlayer" src="/UwU Doki Doki.wav" preload="auto"></audio>
     </div>
-
-    <div id="caption-tools" class="hidden">
-        <h1>Audio Captioning Tool</h1>
-        <div class="audio-player">
-            <div class="current-caption" id="currentCaption">
-                Play to see captions
-            </div>
-            <div class="controls">
-                <button id="markTimeBtn">Mark Current Time</button>
-                <button id="playPauseBtn">Play/Pause</button>
-                <button id="exportBtn">Export Captions</button>
-            </div>
-            <div class="timing-mode-toggle">
-                <label>
-                    <input type="checkbox" id="wordTimingToggle"> Enable Word Timing Mode
-                </label>
-                <span id="wordTimingStatus">OFF</span>
-            </div>
-        </div>
-        
-        <div class="timeline">
-            <div id="progressBar">
-                <div id="progress"></div>
-                <div id="timeMarkers"></div>
-            </div>
-        </div>
-        
-        <div class="lyrics-container">
-            <h2>Synchronized Lyrics</h2>
-            <div id="lyricsDisplay"></div>
-        </div>
-        
-        <div class="captions-container">
-            <h2>Captions</h2>
-            <div id="captionsList"></div>
-        </div>
-        
-        <div class="caption-editor-container">
-            <h2>Caption Word Timing Editor</h2>
-            <div id="captionEditorPanel"></div>
-        </div>
-    </div>
+    
+    <!-- Fixed position pause button -->
+    <button id="fixedPauseBtn" class="fixed-pause-btn playing">
+        <span class="pause-icon"></span>
+    </button>
     
     <script type="module" src="game.js"></script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
