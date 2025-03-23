@@ -144,6 +144,23 @@ function setupEventListeners() {
     // Play/Pause button
     fixedPauseBtn.addEventListener('click', togglePlayPause);
     
+    // Add click listener to start audio
+    loadingScreen.addEventListener('click', () => {
+        if (!gameStarted) {
+            gameStarted = true;
+            audioPlayer.play()
+                .then(() => {
+                    fixedPauseBtn.classList.remove('paused');
+                    fixedPauseBtn.classList.add('playing');
+                    loadingScreen.style.display = 'none';
+                })
+                .catch(err => {
+                    console.error("Error playing audio:", err);
+                    loadingScreen.innerHTML = 'Error playing audio. Try again.<br>Click anywhere to start';
+                });
+        }
+    });
+    
     // Audio player events
     audioPlayer.addEventListener('ended', () => {
         gameStarted = false;
@@ -163,10 +180,6 @@ function togglePlayPause() {
         fixedPauseBtn.classList.add('paused');
         gameStarted = false;
     }
-}
-
-function startGame() {
-    // Removed start game function as the game starts automatically
 }
 
 function update() {
@@ -208,25 +221,6 @@ function update() {
         // Update lyrics display
         updateLyrics(audioPlayer.currentTime, config.predefinedCaptions, currentCaption, activeWords, lyricsContainer, scene, ball);
         
-        // Update rainbow shader uniforms
-        const currentTime = audioPlayer.currentTime;
-        if (skyboxDancer) {
-            skyboxDancer.traverse(child => {
-                if (child.isMesh && child.material && child.material.uniforms) {
-                    // Update time value
-                    child.material.uniforms.time.value = currentTime;
-                    
-                    // Update intensity based on audio playback position to create music reactivity
-                    let intensity = 1.0;
-                    if (audioPlayer && audioPlayer.currentTime > 0) {
-                        // Simple audio reactivity based on current time
-                        intensity = 0.8 + Math.sin(audioPlayer.currentTime * 3) * 0.2 + Math.cos(audioPlayer.currentTime * 5) * 0.2;
-                    }
-                    child.material.uniforms.intensity.value = intensity;
-                }
-            });
-        }
-        
         // Update audio visualizers
         updateAudioVisualizers();
     }
@@ -251,15 +245,15 @@ function update() {
 
 function updateSmartCamera() {
     // Simplified camera logic - focus mainly on the ball
-    const cameraDistance = 120;  
-    const cameraHeight = 60;    
+    const cameraDistance = 80;  
+    const cameraHeight = 40;    
     
     // Set dancer position to always be in front of the ball
     if (skyboxDancer) {
         skyboxDancer.position.set(
             ball.position.x, 
             0,  
-            ball.position.z - 130  
+            ball.position.z - 100 
         );
         skyboxDancer.lookAt(ball.position); 
     }
@@ -312,11 +306,8 @@ function initGame() {
     ball = ballObj;
     ballBody = ballPhysicsBody;
     
-    // Don't start the game automatically - wait for user interaction
+    // Wait for user interaction before starting audio
     gameStarted = false;
-    // Add a click or touch handler to start audio playback
-    document.addEventListener('click', startAudioPlayback, { once: true });
-    document.addEventListener('touchstart', startAudioPlayback, { once: true });
     
     // Add loading timeout
     const loadingTimeout = setTimeout(() => {
@@ -350,21 +341,6 @@ function initGame() {
             window.location.reload();
         });
     });
-}
-
-function startAudioPlayback() {
-    // Start the game after user interaction
-    gameStarted = true;
-    audioPlayer.play().catch(error => {
-        console.error("Audio playback failed:", error);
-    });
-    fixedPauseBtn.classList.remove('paused');
-    fixedPauseBtn.classList.add('playing');
-    
-    // Hide the loading screen if it's still visible
-    if (loadingScreen) {
-        loadingScreen.style.display = 'none';
-    }
 }
 
 // Start the game when the page loads

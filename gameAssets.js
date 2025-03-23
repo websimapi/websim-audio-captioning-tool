@@ -25,54 +25,14 @@ async function loadSkyboxDancer(scene) {
                 const dancer = fbx;
                 dancer.scale.set(0.8, 0.8, 0.8); 
                 dancer.position.set(0, 0, -100);  
-                
-                // Create rainbow shader material
-                const rainbowVertexShader = `
-                    varying vec2 vUv;
-                    void main() {
-                        vUv = uv;
-                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                    }
-                `;
-                
-                const rainbowFragmentShader = `
-                    uniform float time;
-                    uniform float intensity;
-                    varying vec2 vUv;
-                    
-                    void main() {
-                        vec3 baseColor = vec3(0.8, 0.8, 0.8);
-                        float r = baseColor.r * (0.8 + 0.2 * sin(time * 1.0 + vUv.x * 10.0));
-                        float g = baseColor.g * (0.8 + 0.2 * sin(time * 0.8 + vUv.y * 10.0 + 2.0));
-                        float b = baseColor.b * (0.8 + 0.2 * sin(time * 1.2 + (vUv.x + vUv.y) * 10.0 + 4.0));
-                        
-                        vec3 rainbowColor = vec3(r, g, b) * vec3(intensity);
-                        gl_FragColor = vec4(rainbowColor, 1.0);
-                    }
-                `;
-                
-                const rainbowUniforms = {
-                    time: { value: 0 },
-                    intensity: { value: 1.0 }
-                };
-                
-                const rainbowMaterial = new THREE.ShaderMaterial({
-                    uniforms: rainbowUniforms,
-                    vertexShader: rainbowVertexShader,
-                    fragmentShader: rainbowFragmentShader,
-                    side: THREE.DoubleSide
-                });
-                
                 dancer.traverse(child => {
                     if (child.isMesh) {
                         child.castShadow = true;
                         child.receiveShadow = true;
-                        // Store original material
-                        child.userData.originalMaterial = child.material;
-                        // Clone material for each mesh to prevent shared uniforms
-                        const newMaterial = rainbowMaterial.clone();
-                        newMaterial.uniforms = JSON.parse(JSON.stringify(rainbowUniforms));
-                        child.material = newMaterial;
+                        if (child.material) {
+                            child.material.emissive = new THREE.Color(0x808080);
+                            child.material.emissiveIntensity = 1.0; 
+                        }
                     }
                 });
                 
